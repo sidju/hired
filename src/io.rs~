@@ -1,0 +1,22 @@
+
+pub fn read_command(stdin: &std::io::Stdin, line: &mut String, prompt: & Option<String>) {
+    // Print prompt if relevant
+    match prompt {
+        Some(p) => print!("{}", p),
+        None => {},
+    }
+    // Read input
+    match stdin.read_line(line) {
+        Ok(bytes_read) => {
+            #[cfg(feature = "debug")]
+            {
+                println!("Read {} bytes from stdid.", bytes_read);
+            }
+            ()
+        },
+        e => {
+            e.expect("Failed to read from stdin.");
+            ()
+        },
+    }
+}
