@@ -68,7 +68,7 @@ pub fn print_selection(
     {
         println!("the selection was: {:?}", selection);
     }
-    if selection.0 != selection.1 {
+    if selection.0 < selection.1 {
         // Slice the data we want to print and iteratively print it
         if numbered {
             let mut i = selection.0;
@@ -85,7 +85,7 @@ pub fn print_selection(
         Ok(())
     }
     else {
-        Err("Cannot print empty selection.".to_string())
+        Err("Cannot print empty or inverted selection.".to_string())
     }
 }
 // Print last error if some, else create one

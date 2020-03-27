@@ -50,7 +50,7 @@ fn parse_selection(string: &str,
                 // If no ',' exists we check if one index was given
                 let lone = parse_index(string)?;
                 // Avoid panics from overshooting the buffer length
-                if lone + 1 > bufferlen {
+                if lone > bufferlen {
                     Err("Selection overshoots the buffer length.".to_string())
                 }
                 else if lone == 0 {
@@ -103,32 +103,68 @@ fn parse_expression(expression: &str, nr: usize)
 }
 fn insert(buffer: &mut Vec<String>, data: &mut Vec<String>,mut index: usize)
           -> Result<(), String> {
-    // If we are adding to the end, we use append (split doest't handle it)
-    if index >= buffer.len() {
-        #[cfg(feature = "debug")]
-        {
-            println!("appending since len was {} and index was {}",
-                     buffer.len(), index);
-        }
-        buffer.append(data);
+    // 0 is valid and should place on first line, others should be shifted
+    if index != 0 {
+        index -= 1;
+    }
+    #[cfg(feature = "debug")]
+    {
+        println!("inserting at index {}", index);
+    }
+    // To minimise the processing we split the vector
+    let mut tail = buffer.split_off(index);
+    // And then append both the insert and the split off part
+    buffer.append(data);
+    buffer.append(&mut tail);
+    Ok(())
+}
+fn delete(buffer: &mut Vec<String>, selection: (usize, usize))
+          -> Result<(), String> {
+    // ensure that the selection is valid
+    if selection.0 < selection.1 && selection.1 <= buffer.len() {
+        let mut tail = buffer.split_off(selection.1);
+        let _deleted = buffer.split_off(selection.0);
+        buffer.append(&mut tail);
         Ok(())
     }
     else {
-        // 0 is valid and should place on first line, others should be shifted
-        if index != 0 {
-            index -= 1;
-        }
         #[cfg(feature = "debug")]
         {
-            println!("inserting at index {}", index);
+            println!("The selection was {:?}", selection);
+            if selection.0 >= selection.1 {
+                println!("The selection is empty or inverted");
+            }
+            if selection.1 > buffer.len() {
+                println!("The selection overshoots the buffer.");
+            }
         }
-        // To minimise the processing we split the vector
-        //(moving all elements after the insertion to a separate vector)
-        let mut tail = buffer.split_off(index);
-        // And then append both the insert and the split off part
+        Err("Invalid selection.".to_string())
+    }
+}
+fn change(buffer: &mut Vec<String>,
+          data: &mut Vec<String>,
+          selection: (usize, usize)
+) -> Result<(), String> {
+    // ensure that the selection is valid
+    if selection.0 < selection.1 && selection.1 <= buffer.len() {
+        let mut tail = buffer.split_off(selection.1);
+        let _deleted = buffer.split_off(selection.0);
         buffer.append(data);
         buffer.append(&mut tail);
         Ok(())
+    }
+    else {
+        #[cfg(feature = "debug")]
+        {
+            println!("The selection was {:?}", selection);
+            if selection.0 >= selection.1 {
+                println!("The selection is empty or inverted");
+            }
+            if selection.1 > buffer.len() {
+                println!("The selection overshoots the buffer.");
+            }
+        }
+        Err("Invalid selection.".to_string())
     }
 }
 pub fn handle_command(state: &mut crate::State, command: &mut String)
@@ -180,6 +216,32 @@ pub fn handle_command(state: &mut crate::State, command: &mut String)
                 state.selection = new_selection;
                 return Ok(())
             },
+            'c' => {
+                let lines = parse_selection(&command[0..index],
+                                            &state.selection,
+                                            state.buffer.len()
+                )?;
+                // Read in the text to change selection into
+                let mut data = io::read_insert(&state);
+                // Adjust the selection, if affected by delete
+                let new_selection = Some((lines.0, lines.0 + data.len()));
+                // Insert it into the buffer at instructed line
+                change(&mut state.buffer, &mut data, lines)?;
+                state.selection = new_selection;
+                return Ok(())
+            },
+            'd' => {
+                let lines = parse_selection(&command[0..index],
+                                           &state.selection,
+                                           state.buffer.len()
+                )?;
+                // Adjust the selection, if affected by delete
+                let new_selection = Some((lines.0 + 1, lines.0));
+                // Insert it into the buffer at instructed line
+                delete(&mut state.buffer, lines)?;
+                state.selection = new_selection;
+                return Ok(())
+            },
             'p' => {
                 let lines = parse_selection(&command[0..index],
                                            &state.selection,
@@ -191,6 +253,7 @@ pub fn handle_command(state: &mut crate::State, command: &mut String)
                 state.selection = new_selection;
                 return Ok(())
             },
+
             _ => {},
         }
     }
