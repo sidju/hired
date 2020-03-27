@@ -9,3 +9,4 @@ edition = "2018"
 debug = []
 
 [dependencies]
+regex = "1.3"

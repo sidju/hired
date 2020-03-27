@@ -70,6 +70,7 @@ fn parse_expression(expression: &str, nr: usize)
                     -> Result<(usize, Vec<&str>), String> {
 
     let mut segments = Vec::new();
+    // marks the index of the previous found separator
     let mut last_index = 0;
     let mut i = 0;
     // Use the first char in the string to split the rest
@@ -82,10 +83,15 @@ fn parse_expression(expression: &str, nr: usize)
     for (index, ch) in expression[1..].char_indices() {
         // If we are at a separator we save the slice into the vector
         if ch == separator {
+            #[cfg(feature = "debug")]
+            {
+                println!("Found separator at index {}.", index + 1);
+                println!("Concluding span {:?}",(last_index + 1, index + 1));
+            }
             // since we are iterating of a slice shifted one step from
             // the expression slice we add one to all indices
             segments.push(&expression[last_index + 1 .. index + 1]);
-            last_index = index;
+            last_index = index + 1;
             i += 1;
             // If we have found enough segments we break
             if i >= nr {
@@ -95,7 +101,7 @@ fn parse_expression(expression: &str, nr: usize)
     }
     // Error if insufficient expression segments were given
     if i < nr {
-        Err("Expression too short.".to_string())
+        Err("Expression too short or incorrectly closed.".to_string())
     }
     else {
         Ok((last_index, segments))
@@ -167,6 +173,62 @@ fn change(buffer: &mut Vec<String>,
         Err("Invalid selection.".to_string())
     }
 }
+fn search_replace(buffer: &mut Vec<String>,
+                  pattern: (&str, &str),
+                  selection: (usize, usize),
+                  global: bool,
+) -> Result<(), String> {
+    use regex::Regex;
+    // ensure that the selection is valid
+    if selection.0 < selection.1 && selection.1 <= buffer.len() {
+        // Compile the regex used to match/extract data
+        let regex = Regex::new(pattern.0).expect("Failed to create pattern regex.");
+        if global {
+            for index in selection.0 .. selection.1 {
+                let after = regex.replace_all(&buffer[index], pattern.1);
+                #[cfg(feature = "debug")]
+                {
+                    print!("Replacing:\n{}\nwith:\n{}",
+                           &buffer[index],after
+                    );
+                }
+                buffer[index] = after.to_string();
+            }
+            Ok(())
+        }
+        else {
+            // Check each line for a match. If found, replace and break
+            for index in selection.0 .. selection.1 {
+                if regex.is_match(&buffer[index]) {
+                    let after = regex.replace(&buffer[index], pattern.1);
+                    #[cfg(feature = "debug")]
+                    {
+                        print!("Replacing:\n{}\nwith:\n{}",
+                               &buffer[index],after
+                        );
+                    }
+                    buffer[index] = after.to_string();
+                    break;
+                }
+            }
+            Ok(())
+        }
+    }
+    else {
+        #[cfg(feature = "debug")]
+        {
+            println!("The selection was {:?}", selection);
+            if selection.0 >= selection.1 {
+                println!("The selection is empty or inverted");
+            }
+            if selection.1 > buffer.len() {
+                println!("The selection overshoots the buffer.");
+            }
+        }
+        Err("Invalid selection.".to_string())
+    }
+}
+
 pub fn handle_command(state: &mut crate::State, command: &mut String)
                       -> Result<(), String> {
     for (index, ch) in command.trim().char_indices() {
@@ -235,13 +297,35 @@ pub fn handle_command(state: &mut crate::State, command: &mut String)
                                            &state.selection,
                                            state.buffer.len()
                 )?;
-                // Adjust the selection, if affected by delete
+                // Adjust the selection
                 let new_selection = Some((lines.0 + 1, lines.0));
-                // Insert it into the buffer at instructed line
+                // Delete the given lines
                 delete(&mut state.buffer, lines)?;
                 state.selection = new_selection;
                 return Ok(())
             },
+            's' => {
+                let lines = parse_selection(&command[0..index],
+                                            &state.selection,
+                                            state.buffer.len()
+                )?;
+                // Adjust the selection
+                let new_selection = Some((lines.0, lines.1));
+                // Get the regex itself
+                let (_expr_end, expr) =
+                    parse_expression(&command[index+1..command.len()],
+                                     2 as usize,
+                )?;
+                // Perform the replacement
+                search_replace(&mut state.buffer,
+                               (expr[0], expr[1]),
+                               lines,
+                               true
+                )?;
+                // If no error, set selection and return ok
+                state.selection = new_selection;
+                return Ok(())
+            }
             'p' => {
                 let lines = parse_selection(&command[0..index],
                                            &state.selection,
