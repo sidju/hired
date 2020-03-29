@@ -1,4 +1,21 @@
 use crate::io;
+use crate::buffer::Buffer;
+use std::collections::HashSet;
+
+pub struct Command<'a> {
+  selection: Option<(usize, usize)>, // The selection on which to operate, or default
+  command: char,
+  pattern: Option<Vec<&'a str>>, // A vector over the patterns given if relevant
+  flags: HashSet<char>, // A hash set with the flags given existing
+}
+//impl Command {
+//  /// Execute the command with stored arguments
+//  fn execute<B: Buffer>(buffer: B) -> Result<(), &str> ;
+//  /// A simple debug printout seems prudent as well
+//  fn debug_print();
+//}
+
+
 
 fn parse_index(index: &str) -> Result<usize, String> {
     match index.parse::<usize>() {

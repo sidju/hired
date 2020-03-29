@@ -3,6 +3,9 @@
 
 mod io;
 mod cmd;
+mod buffer;
+
+use buffer::{VecBuffer, Buffer};
 
 // Runtime variables
 pub struct State{
@@ -15,6 +18,7 @@ pub struct State{
     error: Option<String>, // Tracks the latest error
     stdin: std::io::Stdin, // The stdin is shared, to avoid conflicting opens
     buffer: Vec<String>, // The editing buffer
+    test: VecBuffer,
 }
 impl State {
     pub fn new() -> Self {
@@ -26,6 +30,7 @@ impl State {
             error: None,
             stdin: std::io::stdin(),
             buffer: Vec::new(),
+            test: VecBuffer::new(),
         }
     }
 }
@@ -39,6 +44,9 @@ fn main() {
 
     // Init state
     let mut state = State::new();
+
+    // Test the vecbuffer
+    state.test.insert(&mut vec!["test\n".to_string(),"lines\n".to_string()], 0);
 
     // Parse command line args
     let mut i = 0;
