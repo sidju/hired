@@ -1,20 +1,171 @@
 use crate::io;
 use crate::buffer::Buffer;
-use std::collections::HashSet;
 
-pub struct Command<'a> {
-  selection: Option<(usize, usize)>, // The selection on which to operate, or default
-  command: char,
-  pattern: Option<Vec<&'a str>>, // A vector over the patterns given if relevant
-  flags: HashSet<char>, // A hash set with the flags given existing
+const SELECTION_PARSE_ERR: &str = "Could not parse given selection.";
+const SELECTION_OUT_OF_BOUNDS: &str = "Selection out of bounds.";
+const SELECTION_INVERTED: &str = "Selection is empty or inverted.";
+
+const NO_COMMAND_ERR: &str = "No valid command given.";
+const VALID_COMMANDS: &str =
+    "abcdefthijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+// Utility function needed a few times while parsing
+pub fn find_any_of(options: &str, input: &str) -> Option<usize> {
+    for (index, ch) in input.char_indices() {
+        if options.chars().any(|cmd| cmd == ch) {
+            return Some(index);
+        }
+    }
+    None
 }
-//impl Command {
+
+// A parsing state machine
+// Each state is the task completed when the state is active
+pub struct Parse<S> {
+    stage: S
+}
+struct Init<'a> {
+    input: &'a str,
+    state: &'a crate::State,
+}
+struct Command<'a> {
+    input: &'a str,
+    selection: (usize, usize),
+    command: char,
+    state: &'a crate::State,
+}
+struct Expression<'a> {
+    selection: (usize, usize),
+    command: char,
+    expression: Vec<&'a str>,
+}
+
+// A command abstraction
+pub enum Cmd<'a> {
+    A(Append<'a>),
+}
+struct Append<'a> {
+    state: &'a dyn Buffer,
+    selection: (usize, usize),
+    input: Vec<String>,
+    // Flags
+    p: bool,
+}
+
+// impl Parse<Cmd<'a>> {
+//     pub fn parse<'a>(input: &'a str, state: &'a crate::State)
+//                      -> Self {
+//         let start = Parse{ stage: Init{
+//             input: input,
+//             state: state,
+//         }};
+//         // Perform the parsing
+//         start
+//             .parse_selection()
+//             .parse_command()
+//             .parse_expression()
+//             .parse_flags()
+//     }
+// }
+impl <'a> Parse<Command<'a>> {
+    // Get the selection and command, the basic data
+    fn parse_command(from: Parse<Init<'a>>) -> Result<Self, &str> {
+        let bufferlen = from.stage.state.buffer.len();
+        let selection = from.stage.state.selection.unwrap_or_else(||(0 as usize, bufferlen));
+        let parse_index = | index: &str, selection: usize, default: usize | -> Result<usize, &str> {
+            match index {
+                "." => Ok(selection),
+                "$" => Ok(bufferlen),
+                "+" => Ok(selection + 1),
+                "-" => Ok(selection - 1),
+                _ => { match index.chars().next() {
+                    Some('-') => index[1..].parse::<usize>().map(|x| x - 1),
+                    Some('+') => index[1..].parse::<usize>().map(|x| x + 1),
+                    _ => index.parse::<usize>()
+                }.map_err(|_| SELECTION_PARSE_ERR)},
+            }
+        };
+        // Separate out the index of the first command, an the selection str
+        let (command_index, string) =
+            match find_any_of(VALID_COMMANDS, from.stage.input) {
+                Some(x) => Ok((x, &from.stage.input[..x])),
+                None => Err(NO_COMMAND_ERR),
+            }?;
+
+        // If no string was given we use the default
+        let parsed = if string.len() == 0 {
+            Ok(selection)
+        }
+        // Else we parse what is given, if possible
+        else {
+            // split the parsing based on where there is a ','
+            match find_any_of(",;", string) {
+                Some(x) => {
+                    // If the found one is ';' the default shift
+                    // from 1,bufferlen to selection.0,bufferlen
+                    let (start, end) = if string.chars().next() == Some(',') {
+                        (parse_index(&string[..x], selection.0, 1)?,
+                         parse_index(&string[x+1..], selection.1, bufferlen)?)
+                    }
+                    else {
+                        (parse_index(&string[..x], selection.0, 1)?,
+                         parse_index(&string[x+1..], selection.1, bufferlen)?)
+                    };
+                    // Handle assorted edge cases
+                    if end > bufferlen {
+                        Err(SELECTION_OUT_OF_BOUNDS)
+                    }
+                    else if start > end {
+                        Err(SELECTION_INVERTED)
+                    }
+                    else {
+                        if start == 0 {
+                            Ok((start, end))
+                        }
+                        else {
+                            Ok((start - 1, end ))
+                        }
+                    }
+                },
+                None => {
+                    // If no ',' exists we check if one index was given
+                    // It is treated as end
+                    let lone = parse_index(string, selection.1, bufferlen)?;
+                    // Avoid panics from overshooting the buffer length
+                    if lone > bufferlen {
+                        Err(SELECTION_OUT_OF_BOUNDS)
+                    }
+                    else if lone == 0 {
+                        Ok((lone, lone))
+                    }
+                    else {
+                        Ok((lone - 1, lone))
+                    }
+                },
+            }
+        }?;
+        // Build the state for the next stage
+        Ok(Self{stage: Command{
+            input: &from.stage.input[command_index + 1 ..],
+            selection: parsed,
+            command:
+            from.stage.input[command_index..].chars().next().unwrap(),
+            state: from.stage.state,
+        }})
+    }
+}
+    //fn parse_expression(self: Self::Expression) -> Self::Flags {
+
+    //}
+    // fn parse_flags(self: Self::Flags) -> Self::Done {
+    // }
+
+//impl Cmd {
 //  /// Execute the command with stored arguments
-//  fn execute<B: Buffer>(buffer: B) -> Result<(), &str> ;
+//  fn execute() -> Result<(), &str> ;
 //  /// A simple debug printout seems prudent as well
 //  fn debug_print();
 //}
-
 
 
 fn parse_index(index: &str) -> Result<usize, String> {
