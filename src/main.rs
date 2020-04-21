@@ -15,10 +15,9 @@ pub struct State{
     file: Option<String>,// The one to write to by default
     // state variables
     done: bool, // Marks that it is time to exit
-    error: Option<String>, // Tracks the latest error
+    error: Option<&'static str>, // Tracks the latest error
     stdin: std::io::Stdin, // The stdin is shared, to avoid conflicting opens
-    buffer: Vec<String>, // The editing buffer
-    test: VecBuffer,
+    buffer: VecBuffer, // The editing buffer
 }
 impl State {
     pub fn new() -> Self {
@@ -29,8 +28,7 @@ impl State {
             done: false,
             error: None,
             stdin: std::io::stdin(),
-            buffer: Vec::new(),
-            test: VecBuffer::new(),
+            buffer: VecBuffer::new(),
         }
     }
 }
@@ -45,39 +43,36 @@ fn main() {
     // Init state
     let mut state = State::new();
 
-    // Test the vecbuffer
-    state.test.insert(&mut vec!["test\n".to_string(),"lines\n".to_string()], 0);
-
-    // Parse command line args
-    let mut i = 0;
-    for arg in std::env::args() {
-        if i != 0 {
-            match arg {
-                filename => {
-                    use std::io::{BufRead, BufReader};
-                    // Open the file TODO, better error handling
-                    let file =
-                        std::fs::OpenOptions::new()
-                        .read(true)
-                        .write(true)
-                        .create(true) // If the file is not found it is created
-                        .open(filename)
-                        .unwrap();
-                    // A buffered reader is required to read line by line
-                    let mut reader = BufReader::new(file);
-                    // Loop reading the lines of the file into the buffer.
-                    loop {
-                        let mut line = String::new();
-                        match reader.read_line(&mut line).unwrap() {
-                            0 => break, // Means we have reached EOF
-                            _ => state.buffer.push(line),
-                        }
-                    }
-                },
-            }
-        }
-        i +=1;
-    }
+    // // Parse command line args
+    // let mut i = 0;
+    // for arg in std::env::args() {
+    //     if i != 0 {
+    //         match arg {
+    //             filename => {
+    //                 use std::io::{BufRead, BufReader};
+    //                 // Open the file TODO, better error handling
+    //                 let file =
+    //                     std::fs::OpenOptions::new()
+    //                     .read(true)
+    //                     .write(true)
+    //                     .create(true) // If the file is not found it is created
+    //                     .open(filename)
+    //                     .unwrap();
+    //                 // A buffered reader is required to read line by line
+    //                 let mut reader = BufReader::new(file);
+    //                 // Loop reading the lines of the file into the buffer.
+    //                 loop {
+    //                     let mut line = String::new();
+    //                     match reader.read_line(&mut line).unwrap() {
+    //                         0 => break, // Means we have reached EOF
+    //                         _ => state.buffer.push(line),
+    //                     }
+    //                 }
+    //             },
+    //         }
+    //     }
+    //     i +=1;
+    // }
 
     // Loop until done. Take, identify and execute commands
     while !state.done {
@@ -86,7 +81,7 @@ fn main() {
         io::read_command(&mut state, &mut command);
 
         // Handle command
-        match cmd::handle_command(&mut state, &mut command) {
+        match cmd::parse_and_run(&mut state, &mut command) {
             Ok(()) => {},
             Err(e) => {
                 state.error = Some(e);

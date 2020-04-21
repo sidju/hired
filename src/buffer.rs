@@ -16,6 +16,7 @@ pub trait Buffer {
   fn search_replace(&mut self, pattern: (&str, &str), selection: (usize, usize), global: bool) -> Result<(), &str> ;
   // Find the indices in the selection whose lines match the regex pattern
   // fn find_matching(&self, pattern: &str, selection: (usize, usize)) -> Result<(), &str> ;
+  fn len(&self) -> usize ;
 }
 
 pub struct VecBuffer {
@@ -66,7 +67,7 @@ impl Buffer for VecBuffer
     }
     Ok(ret)
   }
-  fn insert(&mut self, data: &mut Vec<String>, mut index: usize) -> Result<(), &str>  
+  fn insert(&mut self, data: &mut Vec<String>, mut index: usize) -> Result<(), &str>
   {
     if index > self.buffer.len() {
       //0 is valid but needs to be specially handled
@@ -184,4 +185,7 @@ impl Buffer for VecBuffer
     }
   }
   // fn find_matching(&self, pattern: &str, selection: (usize, usize)) -> Result<(), &str> ;
+    fn len(&self) -> usize {
+        self.buffer.len()
+    }
 }
