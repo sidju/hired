@@ -16,12 +16,13 @@ const VALID_COMMANDS: &str =
 
 // Consts for (regular) expression parsing
 const EXPRESSION_TOO_SHORT_ERR: &str = "Expression too short or not closed.";
-const NO_EXPRESSION_COMMANDS: &str =
-    "abcdefthijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const ONE_EXPRESSION_COMMANDS: &str =
     "gG";
 const TWO_EXPRESSION_COMMANDS: &str =
     "s";
+
+// Consts for flag parsing
+const UNDEFINED_FLAG: &str = "Unknown flag entered.";
 
 // Utility function needed a few times while parsing
 fn find_any_of(options: &str, input: &str) -> Option<usize> {
@@ -49,25 +50,25 @@ struct Parse<S> {
 }
 struct Init<'a> {
     input: &'a str,
-    state: &'a crate::State,
+    state: &'a mut crate::State,
 }
 struct Command<'a> {
     input: &'a str,
     selection: (usize, usize),
     command: char,
-    state: &'a crate::State,
+    state: &'a mut crate::State,
 }
 struct Expression<'a> {
     input: &'a str,
     selection: (usize, usize),
     command: char,
     expression: Vec<&'a str>,
-    state: &'a crate::State,
+    state: &'a mut crate::State,
 }
 
 // The state transitions for the parser
 impl <'a> Parse<Init<'a>> {
-    fn new(input: &'a str, state: &'a crate::State) -> Self {
+    fn new(input: &'a str, state: &'a mut crate::State) -> Self {
         Self{stage: Init{
             input: input,
             state: state,
@@ -219,25 +220,63 @@ impl <'a> Parse<Cmd<'a>> {
     fn flags(from: Parse<Expression<'a>>) -> Result<Self, &'static str> {
         // Keep track of the number of unidentified flags
         // If non-zero when returning invalid flags were given
-        let mut unidentified = from.stage.input.len();
+        let mut unidentified = from.stage.input.len() - 1; // Subtract newline
         // The universal flags
         let p = unpk(from.stage.input.find('p'), &mut unidentified);
         let n = unpk(from.stage.input.find('n'), &mut unidentified);
         let l = unpk(from.stage.input.find('l'), &mut unidentified);
         // Identify the command
-        match from.stage.command {
+        let cmd = match from.stage.command {
+            // The simple ones
+            'q' => Ok(Self{stage: Cmd::Quit(from.stage.state)}),
+            'Q' => Ok(Self{stage: Cmd::ForceQuit(from.stage.state)}),
+            'h' => Ok(Self{stage: Cmd::Perror(from.stage.state)}),
+            'H' => Ok(Self{stage: Cmd::SetPerror(from.stage.state)}),
+            // The more complex
+            'p' => {
+                Ok(Self{
+                    stage: Cmd::Print(Print{
+                        state: from.stage.state,
+                        selection: from.stage.selection,
+                        n: n,
+                        l: l,
+                    })
+                })
+            },
             'a' => {
                 let input = io::read_insert(&from.stage.state);
                 Ok(Self{
-                    stage: Cmd::A(Append{
+                    stage: Cmd::Insert(Insert{
                         input: input,
-                        buffer: &from.stage.state.buffer,
-                        selection: from.stage.selection,
+                        state: from.stage.state,
+                        index: from.stage.selection.1 + 1,
                         p: p,
+                        n: n,
+                        l: l,
+                    })
+                })
+            },
+            'i' => {
+                let input = io::read_insert(&from.stage.state);
+                Ok(Self{
+                    stage: Cmd::Insert(Insert{
+                        input: input,
+                        state: from.stage.state,
+                        index: from.stage.selection.0,
+                        p: p,
+                        n: n,
+                        l: l,
                     })
                 })
             },
             _ => Err(UNDEFINED_COMMAND)
+        }?;
+        // Verify that no unknown flags were given
+        if unidentified > 0 {
+            Err(UNDEFINED_FLAG)
+        }
+        else {
+            Ok(cmd)
         }
     }
     fn unpack(self) -> Cmd<'a> {

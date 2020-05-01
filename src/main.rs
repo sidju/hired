@@ -1,5 +1,9 @@
+
 /// Red, a minimalistic ed-like text editor written in rust.
 /// The goal is to replicate all relevant functions in ed and add some additional features to make it more usable.
+
+#[macro_use]
+extern crate derivative;
 
 mod io;
 mod cmd;
@@ -8,15 +12,19 @@ mod buffer;
 use buffer::{VecBuffer, Buffer};
 
 // Runtime variables
+#[derive(Derivative)]
+#[derivative(Debug)]
 pub struct State{
     // Configurations
     selection: Option<(usize, usize)>, // The start and end of selected lines
     prompt: Option<String>, // The string printed out when accepting commands
     file: Option<String>,// The one to write to by default
+    print_errors: bool,
     // state variables
     done: bool, // Marks that it is time to exit
     error: Option<&'static str>, // Tracks the latest error
     stdin: std::io::Stdin, // The stdin is shared, to avoid conflicting opens
+    #[derivative(Debug="ignore")]
     buffer: VecBuffer, // The editing buffer
 }
 impl State {
@@ -25,6 +33,7 @@ impl State {
             selection: None,
             prompt: None,
             file: None,
+            print_errors: false,
             done: false,
             error: None,
             stdin: std::io::stdin(),

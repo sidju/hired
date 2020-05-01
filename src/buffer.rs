@@ -17,15 +17,21 @@ pub trait Buffer {
   // Find the indices in the selection whose lines match the regex pattern
   // fn find_matching(&self, pattern: &str, selection: (usize, usize)) -> Result<(), &str> ;
   fn len(&self) -> usize ;
+  /// Inform the buffer that it has been saved
+  fn set_saved(&mut self);
+  /// Returns true if no changes have been made since last saving
+  fn saved(&self) -> bool;
 }
 
 pub struct VecBuffer {
+  saved: bool,
   buffer: Vec<String>
 }
 impl VecBuffer {
   pub fn new() -> Self
   {
     Self{
+      saved: true,
       buffer: Vec::new(),
     }
   }
@@ -70,6 +76,7 @@ impl Buffer for VecBuffer
   fn insert(&mut self, data: &mut Vec<String>, mut index: usize) -> Result<(), &str>
   {
     if index > self.buffer.len() {
+      self.saved = false;
       //0 is valid but needs to be specially handled
       if index != 0 { index += 1; }
       #[cfg(feature = "debug")] // Debug printouts if debug flag 
@@ -89,6 +96,7 @@ impl Buffer for VecBuffer
   {
     // ensure that the selection is valid
     if selection.0 < selection.1 && selection.1 <= self.buffer.len() {
+      self.saved = false;
       let mut tail = self.buffer.split_off(selection.1);
       let _deleted = self.buffer.split_off(selection.0);
       self.buffer.append(&mut tail);
@@ -112,6 +120,7 @@ impl Buffer for VecBuffer
   {
     // ensure that the selection is valid
     if selection.0 < selection.1 && selection.1 <= self.buffer.len() {
+      self.saved = false;
       let mut tail = self.buffer.split_off(selection.1);
       let _deleted = self.buffer.split_off(selection.0);
       self.buffer.append(data);
@@ -137,6 +146,7 @@ impl Buffer for VecBuffer
     use regex::Regex;
     // ensure that the selection is valid
     if selection.0 < selection.1 && selection.1 <= self.buffer.len() {
+      self.saved = false; // TODO: actually check if changes are made
       // Compile the regex used to match/extract data
       let regex = Regex::new(pattern.0).expect("Failed to create pattern regex.");
       if global {
@@ -187,5 +197,11 @@ impl Buffer for VecBuffer
   // fn find_matching(&self, pattern: &str, selection: (usize, usize)) -> Result<(), &str> ;
     fn len(&self) -> usize {
         self.buffer.len()
+    }
+    fn set_saved(&mut self) {
+        self.saved = true;
+    }
+    fn saved(&self) -> bool {
+        self.saved
     }
 }
