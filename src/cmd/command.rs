@@ -146,13 +146,13 @@ impl <'a> Cmd<'a> {
             //Self::Undo => { state.done = true; Ok(()) },
             Self::Print(print) => {
                 // Format from the buffer
-                let output = print.state.buffer.format_selection(
+                let output = print.state.buffer.get_selection(
                     print.selection,
-                    print.n,
-                    print.l,
                 )?;
                 // Print it
-                print!("{}", output);
+                for line in output {
+                    print!("{}", line);
+                }
                 // And update the selection
                 print.state.selection = Some(print.selection);
                 Ok(())
@@ -182,6 +182,7 @@ impl <'a> Cmd<'a> {
             },
             Self::Delete(delete) => {
                 delete.state.buffer.delete(delete.selection)?;
+                delete.state.selection = None;
                 Ok(())
             },
             Self::Change(mut change) => {
@@ -205,13 +206,14 @@ impl <'a> Cmd<'a> {
                 Ok(())
             },
             Self::Substitute(mut substitute) => {
-                substitute.state.buffer.search_replace(
-                    substitute.expression,
-                    substitute.selection,
-                    substitute.g
-                )?;
+                let new_selection =
+                    substitute.state.buffer.search_replace(
+                        substitute.expression,
+                        substitute.selection,
+                        substitute.g
+                    )?;
                 // Just mark the whole selection as selected
-                substitute.state.selection = Some(substitute.selection);
+                substitute.state.selection = Some(new_selection);
                 Ok(())
             },
             Self::Read(mut read) => {

@@ -4,8 +4,6 @@ pub trait Buffer {
   fn verify_index(&self, index: usize) -> Result<(), &'static str> ;
   /// Check that the selection is safe to operate on
   fn verify_selection(&self, selection: (usize, usize)) -> Result<(), &'static str> ;
-  /// Outputs the selection as a single string
-  fn format_selection(&self, selection: (usize, usize), numbered: bool, literal: bool) -> Result<String, &'static str> ;
   /// Takes a iterator over lines in strings and inserts at given index
   fn insert(&mut self, data: &mut Vec<String>, index: usize) -> Result<(), &'static str> ;
   /// Deletes the lines in the selection
@@ -13,7 +11,8 @@ pub trait Buffer {
   /// Delete the given selection and insert the given data in its place
   fn change(&mut self, data: &mut Vec<String>, selection: (usize, usize)) -> Result<(), &'static str> ;
   /// Perform regex search and replace on the selection changing pattern.0 to pattern.1
-  fn search_replace(&mut self, pattern: (&str, &str), selection: (usize, usize), global: bool) -> Result<(), &'static str> ;
+  /// Returns selection, since it may delete or add lines
+  fn search_replace(&mut self, pattern: (&str, &str), selection: (usize, usize), global: bool) -> Result<(usize, usize), &'static str> ;
   // Find the indices in the selection whose lines match the regex pattern
   // fn find_matching(&self, pattern: &str, selection: (usize, usize)) -> Result<(), &str> ;
   /// Return the given selection without any formatting
@@ -56,25 +55,6 @@ impl Buffer for VecBuffer
       return Err("Selection overshoots buffer length.");
     }
     Ok(())
-  }
-  fn format_selection(&self, selection: (usize, usize), numbered: bool, _literal: bool) -> Result<String, &'static str>
-  {
-    self.verify_selection(selection)?;
-    let mut ret = String::new();
-    if numbered {
-      let mut i = selection.0;
-      for line in &self.buffer[selection.0 .. selection.1] {
-        i += 1;
-        ret.push_str(&format!("{}:\t{}", i, line));
-      }
-    }
-    else {
-      for line in &self.buffer[selection.0 .. selection.1] {
-        ret.push_str(line);
-      }
-    }
-    // Perform the syntax highlighting
-    Ok(ret)
   }
   fn insert(&mut self, data: &mut Vec<String>, mut index: usize) -> Result<(), &'static str>
   {
@@ -145,7 +125,7 @@ impl Buffer for VecBuffer
       Err("Invalid selection.")
     }
   }
-  fn search_replace(&mut self, pattern: (&str, &str), selection: (usize, usize), global: bool) -> Result<(), &'static str>
+  fn search_replace(&mut self, pattern: (&str, &str), selection: (usize, usize), global: bool) -> Result<(usize, usize), &'static str>
   {
     use regex::Regex;
     // ensure that the selection is valid
@@ -153,36 +133,57 @@ impl Buffer for VecBuffer
       self.saved = false; // TODO: actually check if changes are made
       // Compile the regex used to match/extract data
       let regex = Regex::new(pattern.0).expect("Failed to create pattern regex.");
+      let mut selection_after = selection;
       if global {
-        for index in selection.0 .. selection.1 {
-          let after = regex.replace_all(&(self.buffer[index]), pattern.1);
+        // Cut out the whole selection from buffer
+        let mut tail = self.buffer.split_off(selection.1);
+        let before = self.buffer.split_off(selection.0);
+        let mut after = String::new();
+        for line in before {
+          let tmp = regex.replace_all(&line, pattern.1);
+          after.push_str(&tmp);
           #[cfg(feature = "debug")]
-          {
-            print!("Replacing:\n{}\nwith:\n{}",
-              &(self.buffer[index]), after
-            );
-          }
-          self.buffer[index] = after.to_string();
+          { print!("Replacing:\n{}\nwith:\n{}\n",line, tmp); }
         }
-        Ok(())
+        // If the changed area doesn't end with newline we bind in next line
+        if (!after.ends_with('\n')) && (tail.len() > 0) {
+          after.push_str(&tail.remove(0));
+        }
+        // Add to the buffer
+        for newline in after.split('\n') {
+          if newline.len() > 0 {
+            self.buffer.push(format!("{}\n", newline));
+          }
+        }
+        selection_after.1 = self.buffer.len();
+        self.buffer.append(&mut tail); // And put the tail back on
       }
       else {
         // Check each line for a match. If found, replace and break
         for index in selection.0 .. selection.1 {
           if regex.is_match(&(self.buffer[index])) {
-            let after = regex.replace(&(self.buffer[index]), pattern.1);
+            let mut tail = self.buffer.split_off(index + 1);
+            let before = self.buffer.pop().unwrap();
+            let mut after = regex.replace(&before, pattern.1).to_string();
             #[cfg(feature = "debug")]
-            {
-              print!("Replacing:\n{}with:\n{}",
-                &(self.buffer[index]), after
-              );
+            { print!("Replacing:\n{}\nwith:\n{}\n", before, after); }
+            // If the after doesn't end with newline we append next line
+            if (!after.ends_with('\n')) && (tail.len() > 0) {
+              after.push_str(&tail.remove(0));
             }
-            self.buffer[index] = after.to_string();
+            // Add to the buffer
+            for newline in after.split('\n') {
+              if newline.len() > 0 {
+                self.buffer.push(format!("{}\n", newline));
+              }
+            }
+            selection_after.1 = self.buffer.len();
+            self.buffer.append(&mut tail); // And put the tail back on
             break;
           }
         }
-        Ok(())
       }
+      Ok(selection_after)
     }
     else {
       #[cfg(feature = "debug")]

@@ -1,3 +1,4 @@
 TODO:
-* Sanity check buffer after regex, to prevent lines without newlines
-* remove format_selection from buffer. Set in io and use state to syntax highlight.
+* Update state.file on read
+* Make all methods on buffer utilise the 'check_selection' method
+* Imprement proper print method with syntax highlighting

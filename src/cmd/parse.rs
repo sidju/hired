@@ -58,11 +58,14 @@ struct Command<'a> {
     command: char,
     state: &'a mut crate::State,
 }
+#[derive(Derivative)]
+#[derivative(Debug)]
 struct Expression<'a> {
     input: &'a str,
     selection: (usize, usize),
     command: char,
     expression: Vec<&'a str>,
+    #[derivative(Debug="ignore")]
     state: &'a mut crate::State,
 }
 
@@ -174,6 +177,11 @@ impl <'a> Parse<Command<'a>> {
 // Parse out the expression, if relevant
 impl <'a> Parse<Expression<'a>> {
     fn expression(from: Parse<Command<'a>>) -> Result<Self, &'static str> {
+        #[cfg(feature = "debug")]
+        {
+            println!("About to parse expressions. Input is: {}",
+                     from.stage.input);
+        }
         let mut segments = Vec::new(); // To store the expressions
         let mut input = from.stage.input;
         let mut remain = {// The number of segments to find
@@ -215,13 +223,19 @@ impl <'a> Parse<Expression<'a>> {
             }
         }
         // Build the state for the next stage
-        Ok(Self{stage: Expression{
+        let res = Expression{
             input: input,
             selection: from.stage.selection,
             command: from.stage.command,
             expression: segments,
             state: from.stage.state,
-        }})
+        };
+        #[cfg(feature = "debug")]
+        {
+            println!("Done parsing expressions. Result is:\n{:?}",
+                     res);
+        }
+        Ok(Self{stage: res})
     }
 }
 // Parse out the flags, get additional input and unwrap

@@ -1,5 +1,32 @@
-/// IO abstractions to handle errors better
+/// IO abstractions
+use syntect::easy::HighlightLines;
+use syntect::parsing::SyntaxSet;
+use syntect::highlighting::Theme;
+use syntect::util::as_24_bit_terminal_escaped;
 
+pub fn _format_print(
+    syntax_lib: SyntaxSet,
+    theme: &Theme,
+    _filename: &str, // To figure out filetype
+    lines: &[String],
+    offset: usize,
+    n: bool,
+    _l: bool
+) {
+    let syntax = syntax_lib.find_syntax_by_extension("rs")
+        .unwrap(); // TODO: fix
+    let mut highlighter = HighlightLines::new(syntax, theme);
+    for (i, line) in lines.iter().enumerate() {
+        let highlighted = highlighter.highlight(line, &syntax_lib);
+        let escaped = as_24_bit_terminal_escaped(&highlighted[..], true);
+        if n {
+            println!("{}:\t{}",i + offset, escaped);
+        }
+        else {
+            println!("{}", escaped);
+        }
+    }
+}
 pub fn read_command(state: &mut crate::State, command: &mut String) {
     // Clear the line, since read_line appends
     command.clear();
@@ -9,21 +36,28 @@ pub fn read_command(state: &mut crate::State, command: &mut String) {
         None => {},
     }
     // Read input
-    match state.stdin.read_line(command) {
-        Ok(bytes_read) => {
-            #[cfg(feature = "debug")]
-            {
-                println!("Read {} bytes from stdin.", bytes_read);
-            }
-            ()
-        },
-        e => {
-            e.expect("Failed to read from stdin.");
-            ()
-        },
+    loop {
+        match state.stdin.read_line(command) {
+            Ok(_bytes_read) => {
+                #[cfg(feature = "debug")]
+                {
+                    println!("Read {} bytes from stdin.", _bytes_read);
+                    println!("Read {}", command);
+                }
+                if command.ends_with("\\\n") { // If newline was escaped
+                    command.replace_range(command.len() - 2 .., "\n");
+                }
+                else {
+                    break;
+                }
+            },
+            e => {
+                e.expect("Failed to read from stdin.");
+                break;
+            },
+        }
     }
 }
-
 pub fn read_insert(state: &crate::State) -> Vec<String>
 {
     // Create a variable to save the inserted text into
@@ -34,10 +68,10 @@ pub fn read_insert(state: &crate::State) -> Vec<String>
         let mut line = String::new();
         // Read the input
         match state.stdin.read_line(&mut line) {
-            Ok(bytes_read) => {
+            Ok(_bytes_read) => {
                 #[cfg(feature = "debug")]
                 {
-                    println!("Read {} bytes from stdin.", bytes_read);
+                    println!("Read {} bytes from stdin.", _bytes_read);
                 }
                 ()
             },
