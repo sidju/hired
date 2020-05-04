@@ -1,9 +1,7 @@
-use crate::Buffer;
 use crate::State;
 
 // A command abstraction
 mod command;
-use command::Cmd;
 // And a parser that outputs structs for it
 mod parse;
 use parse::parse;

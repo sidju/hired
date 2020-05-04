@@ -81,16 +81,25 @@ impl <'a> Parse<Command<'a>> {
         let bufferlen = from.stage.state.buffer.len();
         let selection = from.stage.state.selection.unwrap_or_else(||(0 as usize, bufferlen));
         let parse_index = | index: &str, selection: usize, default: usize | -> Result<usize, &str> {
-            match index {
-                "." => Ok(selection),
-                "$" => Ok(bufferlen),
-                "+" => Ok(selection + 1),
-                "-" => Ok(selection - 1),
-                _ => { match index.chars().next() {
-                    Some('-') => index[1..].parse::<usize>().map(|x| x - 1),
-                    Some('+') => index[1..].parse::<usize>().map(|x| x + 1),
-                    _ => index.parse::<usize>()
-                }.map_err(|_| SELECTION_PARSE_ERR)},
+            if index.len() == 0 {
+                Ok(default)
+            }
+            else {
+                match index {
+                    "." => Ok(selection),
+                    "$" => Ok(bufferlen),
+                    "+" => Ok(selection + 1),
+                    "-" => Ok(selection - 1),
+                    _ => { match index.chars().next() {
+                        Some('-') => index[1..]
+                            .parse::<usize>()
+                            .map(|x| x - 1),
+                        Some('+') => index[1..]
+                            .parse::<usize>()
+                            .map(|x| x + 1),
+                        _ => index.parse::<usize>()
+                    }.map_err(|_| SELECTION_PARSE_ERR)},
+                }
             }
         };
         // Separate out the index of the first command, an the selection str
@@ -166,7 +175,6 @@ impl <'a> Parse<Command<'a>> {
 impl <'a> Parse<Expression<'a>> {
     fn expression(from: Parse<Command<'a>>) -> Result<Self, &'static str> {
         let mut segments = Vec::new(); // To store the expressions
-        let mut last_index = 0; // To track the separators
         let mut input = from.stage.input;
         let mut remain = {// The number of segments to find
             let cmd = from.stage.command;
@@ -187,6 +195,7 @@ impl <'a> Parse<Expression<'a>> {
                 Some(ch) => ch,
                 None => return Err(EXPRESSION_TOO_SHORT_ERR),
             };
+            input = &input[1 ..];
             while remain > 0 {
                 // find the next separator
                 let index = match input.find(separator) {
@@ -266,6 +275,65 @@ impl <'a> Parse<Cmd<'a>> {
                         p: p,
                         n: n,
                         l: l,
+                    })
+                })
+            },
+            'c' => {
+                let input = io::read_insert(&from.stage.state);
+                Ok(Self{
+                    stage: Cmd::Change(Change{
+                        input: input,
+                        state: from.stage.state,
+                        selection: from.stage.selection,
+                        p: p,
+                        n: n,
+                        l: l,
+                    })
+                })
+            },
+            'd' => {
+                Ok(Self{
+                    stage: Cmd::Delete(Delete{
+                        state: from.stage.state,
+                        selection: from.stage.selection,
+                    })
+                })
+            },
+            's' => {
+                let g = unpk(from.stage.input.find('g'), &mut unidentified);
+                let reg = from.stage.expression[0];
+                let ex = from.stage.expression[1];
+                Ok(Self{
+                    stage: Cmd::Substitute(Substitute{
+                        state: from.stage.state,
+                        selection: from.stage.selection,
+                        expression: (reg,ex),
+                        g: g,
+                        p: p,
+                        n: n,
+                        l: l,
+                    })
+                })
+            },
+            'r' => {
+                // All of the input should be filename => no unidentified
+                unidentified = 0;
+                Ok(Self{
+                    stage: Cmd::Read(Read{
+                        state: from.stage.state,
+                        index: from.stage.selection.1,
+                        path: &from.stage.input[..from.stage.input.len() - 1],
+                    })
+                })
+            },
+            'w' => {
+                // All of the input should be filename => no unidentified
+                unidentified = 0;
+                Ok(Self{
+                    stage: Cmd::Write(Write{
+                        state: from.stage.state,
+                        selection: from.stage.selection,
+                        path: &from.stage.input[..from.stage.input.len() - 1],
                     })
                 })
             },

@@ -24,12 +24,12 @@ pub enum Cmd<'a> {
     // Paste(Paste<'a>), // Append what was last cut to selection
 
     // Global(Global<'a>), // Apply the given commands to lines matching expr.
-    // Substitute(Substitute<'a>), // Regex search and replace over selection
+    Substitute(Substitute<'a>), // Regex search and replace over selection
 
     // ForceOpen(Open<'a>), // Open given file into new buffer ignoring unsaved
     // Open(Open<'a>), // Open given file into new buffer
-    // Read(Read<'a>), // Append contents of given file to selection
-    // Write(Write<'a>), // Write the selection to given file
+    Read(Read<'a>), // Append contents of given file to selection
+    Write(Write<'a>), // Write the selection to given file
 }
 #[derive(Derivative)]
 #[derivative(Debug)]
@@ -89,6 +89,35 @@ pub struct Change<'a> {
     pub n: bool,
     pub l: bool,
 }
+#[derive(Derivative)]
+#[derivative(Debug)]
+pub struct Substitute<'a> {
+    #[derivative(Debug="ignore")]
+    pub state: &'a mut State,
+    pub selection: (usize, usize),
+    pub expression: (&'a str, &'a str),
+    // Flags
+    pub g: bool,
+    pub p: bool,
+    pub n: bool,
+    pub l: bool,
+}
+#[derive(Derivative)]
+#[derivative(Debug)]
+pub struct Read<'a> {
+    #[derivative(Debug="ignore")]
+    pub state: &'a mut State,
+    pub index: usize,
+    pub path: &'a str,
+}
+#[derive(Derivative)]
+#[derivative(Debug)]
+pub struct Write<'a> {
+    #[derivative(Debug="ignore")]
+    pub state: &'a mut State,
+    pub selection: (usize, usize),
+    pub path: &'a str,
+}
 impl <'a> Cmd<'a> {
     /// A simple debug printout
     pub fn debug_print(&self) {
@@ -113,11 +142,108 @@ impl <'a> Cmd<'a> {
                 state.print_errors = ! state.print_errors;
                 Ok(())
             },
+
             //Self::Undo => { state.done = true; Ok(()) },
-            Self::Print(print) => Ok(()),
-            Self::Insert(insert) => Ok(()),
-            Self::Delete(delete) => Ok(()),
-            Self::Change(change) => Ok(()),
+            Self::Print(print) => {
+                // Format from the buffer
+                let output = print.state.buffer.format_selection(
+                    print.selection,
+                    print.n,
+                    print.l,
+                )?;
+                // Print it
+                print!("{}", output);
+                // And update the selection
+                print.state.selection = Some(print.selection);
+                Ok(())
+            },
+            Self::Insert(mut insert) => {
+                // Calculate the start and end of the inserted text
+                let mut end = insert.index + insert.input.len();
+                let mut start = insert.index;
+                // 0 is allowed and needs special handling
+                if insert.index != 0 { start -= 1; end -= 1; }
+                // Perform the insert
+                insert.state.buffer.insert(
+                    &mut insert.input,
+                    insert.index,
+                )?;
+                // Update the selection, shift -1 for insert specific weird
+                insert.state.selection = Some((start, end));
+                // Print if requested
+                if insert.p || insert.n || insert.l {
+                    Self::Print(Print::from_state(
+                        insert.state,
+                        insert.n,
+                        insert.l,
+                    )).execute()?;
+                }
+                Ok(())
+            },
+            Self::Delete(delete) => {
+                delete.state.buffer.delete(delete.selection)?;
+                Ok(())
+            },
+            Self::Change(mut change) => {
+                // Calculate the start and end of the changeed text
+                let end = change.selection.0 + change.input.len();
+                let start = change.selection.0;
+                change.state.buffer.change(
+                    &mut change.input,
+                    change.selection
+                )?;
+                // Update the selection
+                change.state.selection = Some((start, end));
+                // Print if requested
+                if change.p || change.n || change.l {
+                    Self::Print(Print::from_state(
+                        change.state,
+                        change.n,
+                        change.l,
+                    )).execute()?;
+                }
+                Ok(())
+            },
+            Self::Substitute(mut substitute) => {
+                substitute.state.buffer.search_replace(
+                    substitute.expression,
+                    substitute.selection,
+                    substitute.g
+                )?;
+                // Just mark the whole selection as selected
+                substitute.state.selection = Some(substitute.selection);
+                Ok(())
+            },
+            Self::Read(mut read) => {
+                let path = match read.path {
+                    "" => match &read.state.file {
+                        Some(path) => path,
+                        None => return Err("No file specified"),
+                    },
+                    x => x,
+                };
+                let mut data = crate::file::read_file(path)?;
+                let end = read.index + data.len();
+                read.state.buffer.insert(&mut data, read.index)?;
+                read.state.selection = Some((read.index, end));
+                Ok(())
+            }
+            Self::Write(mut write) => {
+                let path = match write.path {
+                    "" => match &write.state.file {
+                        Some(path) => path,
+                        None => return Err("No file specified"),
+                    },
+                    x => x,
+                };
+                let data = write.state.buffer.get_selection(write.selection)?;
+                crate::file::write_file(path, data)?;
+                if write.selection == (0, write.state.buffer.len()) {
+                    write.state.buffer.set_saved();
+                }
+                write.state.selection = Some(write.selection);
+                Ok(())
+            }
         }
     }
 }

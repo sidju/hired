@@ -1,21 +1,23 @@
 /// Trait that defines a buffer supporting 'ed's base commands
 pub trait Buffer {
   /// Check that the index is safe to operate on
-  fn verify_index(&self, index: usize) -> Result<(), &str> ;
+  fn verify_index(&self, index: usize) -> Result<(), &'static str> ;
   /// Check that the selection is safe to operate on
-  fn verify_selection(&self, selection: (usize, usize)) -> Result<(), &str> ;
+  fn verify_selection(&self, selection: (usize, usize)) -> Result<(), &'static str> ;
   /// Outputs the selection as a single string
-  fn format_selection(&self, selection: (usize, usize), numbered: bool) -> Result<String, &str> ;
+  fn format_selection(&self, selection: (usize, usize), numbered: bool, literal: bool) -> Result<String, &'static str> ;
   /// Takes a iterator over lines in strings and inserts at given index
-  fn insert(&mut self, data: &mut Vec<String>, index: usize) -> Result<(), &str> ;
+  fn insert(&mut self, data: &mut Vec<String>, index: usize) -> Result<(), &'static str> ;
   /// Deletes the lines in the selection
-  fn delete(&mut self, selection: (usize, usize)) -> Result<(), &str> ;
+  fn delete(&mut self, selection: (usize, usize)) -> Result<(), &'static str> ;
   /// Delete the given selection and insert the given data in its place
-  fn change(&mut self, data: &mut Vec<String>, selection: (usize, usize)) -> Result<(), &str> ;
+  fn change(&mut self, data: &mut Vec<String>, selection: (usize, usize)) -> Result<(), &'static str> ;
   /// Perform regex search and replace on the selection changing pattern.0 to pattern.1
-  fn search_replace(&mut self, pattern: (&str, &str), selection: (usize, usize), global: bool) -> Result<(), &str> ;
+  fn search_replace(&mut self, pattern: (&str, &str), selection: (usize, usize), global: bool) -> Result<(), &'static str> ;
   // Find the indices in the selection whose lines match the regex pattern
   // fn find_matching(&self, pattern: &str, selection: (usize, usize)) -> Result<(), &str> ;
+  /// Return the given selection without any formatting
+  fn get_selection(&self, selection: (usize, usize)) -> Result<&[String], &'static str>;
   fn len(&self) -> usize ;
   /// Inform the buffer that it has been saved
   fn set_saved(&mut self);
@@ -38,14 +40,14 @@ impl VecBuffer {
 }
 impl Buffer for VecBuffer
 {
-  fn verify_index(&self, index: usize) -> Result<(), &str>
+  fn verify_index(&self, index: usize) -> Result<(), &'static str>
   {
     if index > self.buffer.len() {
       return Err("Selection overshoots buffer length.");
     }
     Ok(())
   }
-  fn verify_selection(&self, selection: (usize, usize)) -> Result<(), &str> 
+  fn verify_selection(&self, selection: (usize, usize)) -> Result<(), &'static str>
   {
     if selection.0 >= selection.1 {
       return Err("Selection empty or inverted.");
@@ -55,7 +57,7 @@ impl Buffer for VecBuffer
     }
     Ok(())
   }
-  fn format_selection(&self, selection: (usize, usize), numbered: bool) -> Result<String, &str>
+  fn format_selection(&self, selection: (usize, usize), numbered: bool, _literal: bool) -> Result<String, &'static str>
   {
     self.verify_selection(selection)?;
     let mut ret = String::new();
@@ -71,15 +73,16 @@ impl Buffer for VecBuffer
         ret.push_str(line);
       }
     }
+    // Perform the syntax highlighting
     Ok(ret)
   }
-  fn insert(&mut self, data: &mut Vec<String>, mut index: usize) -> Result<(), &str>
+  fn insert(&mut self, data: &mut Vec<String>, mut index: usize) -> Result<(), &'static str>
   {
-    if index > self.buffer.len() {
+    if index <= self.buffer.len() + 1 {
       self.saved = false;
       //0 is valid but needs to be specially handled
-      if index != 0 { index += 1; }
-      #[cfg(feature = "debug")] // Debug printouts if debug flag 
+      if index != 0 { index -= 1; }
+      #[cfg(feature = "debug")] // Debug printouts if debug flag
       { println!("inserting at index {}", index); }
       // To minimise time complexity we split the vector immediately
       let mut tail = self.buffer.split_off(index);
@@ -89,10 +92,11 @@ impl Buffer for VecBuffer
       Ok(())
     }
     else {
+      println!("Buffer len is: {} and index is: {}", self.buffer.len(), index);
       Err("Invalid selection.")
     }
   }
-  fn delete(&mut self, selection: (usize, usize)) -> Result<(), &str>
+  fn delete(&mut self, selection: (usize, usize)) -> Result<(), &'static str>
   {
     // ensure that the selection is valid
     if selection.0 < selection.1 && selection.1 <= self.buffer.len() {
@@ -109,14 +113,14 @@ impl Buffer for VecBuffer
         if selection.0 >= selection.1 {
           println!("The selection is empty or inverted");
         }
-        if selection.1 > buffer.len() {
+        if selection.1 > self.buffer.len() {
           println!("The selection overshoots the buffer.");
         }
       }
       Err("Invalid selection.")
     }
   }
-  fn change(&mut self, data: &mut Vec<String>, selection: (usize, usize)) -> Result<(), &str>
+  fn change(&mut self, data: &mut Vec<String>, selection: (usize, usize)) -> Result<(), &'static str>
   {
     // ensure that the selection is valid
     if selection.0 < selection.1 && selection.1 <= self.buffer.len() {
@@ -134,14 +138,14 @@ impl Buffer for VecBuffer
         if selection.0 >= selection.1 {
           println!("The selection is empty or inverted");
         }
-        if selection.1 > buffer.len() {
+        if selection.1 > self.buffer.len() {
           println!("The selection overshoots the buffer.");
         }
       }
       Err("Invalid selection.")
     }
   }
-  fn search_replace(&mut self, pattern: (&str, &str), selection: (usize, usize), global: bool) -> Result<(), &str>
+  fn search_replace(&mut self, pattern: (&str, &str), selection: (usize, usize), global: bool) -> Result<(), &'static str>
   {
     use regex::Regex;
     // ensure that the selection is valid
@@ -169,7 +173,7 @@ impl Buffer for VecBuffer
             let after = regex.replace(&(self.buffer[index]), pattern.1);
             #[cfg(feature = "debug")]
             {
-              print!("Replacing:\n{}\nwith:\n{}",
+              print!("Replacing:\n{}with:\n{}",
                 &(self.buffer[index]), after
               );
             }
@@ -187,7 +191,7 @@ impl Buffer for VecBuffer
         if selection.0 >= selection.1 {
           println!("The selection is empty or inverted");
         }
-        if selection.1 > buffer.len() {
+        if selection.1 > self.buffer.len() {
           println!("The selection overshoots the buffer.");
         }
       }
@@ -195,6 +199,10 @@ impl Buffer for VecBuffer
     }
   }
   // fn find_matching(&self, pattern: &str, selection: (usize, usize)) -> Result<(), &str> ;
+    fn get_selection(&self, selection: (usize, usize)) -> Result<&[String], &'static str> {
+        self.verify_selection(selection)?;
+        Ok(&self.buffer[selection.0 .. selection.1])
+    }
     fn len(&self) -> usize {
         self.buffer.len()
     }

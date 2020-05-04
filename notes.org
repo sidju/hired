@@ -1,0 +1,3 @@
+TODO:
+* Sanity check buffer after regex, to prevent lines without newlines
+* remove format_selection from buffer. Set in io and use state to syntax highlight.

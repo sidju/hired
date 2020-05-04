@@ -8,6 +8,7 @@ extern crate derivative;
 mod io;
 mod cmd;
 mod buffer;
+mod file;
 
 use buffer::{VecBuffer, Buffer};
 
@@ -51,37 +52,6 @@ fn main() {
 
     // Init state
     let mut state = State::new();
-
-    // // Parse command line args
-    // let mut i = 0;
-    // for arg in std::env::args() {
-    //     if i != 0 {
-    //         match arg {
-    //             filename => {
-    //                 use std::io::{BufRead, BufReader};
-    //                 // Open the file TODO, better error handling
-    //                 let file =
-    //                     std::fs::OpenOptions::new()
-    //                     .read(true)
-    //                     .write(true)
-    //                     .create(true) // If the file is not found it is created
-    //                     .open(filename)
-    //                     .unwrap();
-    //                 // A buffered reader is required to read line by line
-    //                 let mut reader = BufReader::new(file);
-    //                 // Loop reading the lines of the file into the buffer.
-    //                 loop {
-    //                     let mut line = String::new();
-    //                     match reader.read_line(&mut line).unwrap() {
-    //                         0 => break, // Means we have reached EOF
-    //                         _ => state.buffer.push(line),
-    //                     }
-    //                 }
-    //             },
-    //         }
-    //     }
-    //     i +=1;
-    // }
 
     // Loop until done. Take, identify and execute commands
     while !state.done {
