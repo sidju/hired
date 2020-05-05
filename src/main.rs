@@ -10,16 +10,24 @@ mod cmd;
 mod buffer;
 mod file;
 
+use syntect::parsing::SyntaxSet;
+use syntect::highlighting::ThemeSet;
+
 use buffer::{VecBuffer, Buffer};
+
 
 // Runtime variables
 #[derive(Derivative)]
 #[derivative(Debug)]
-pub struct State{
+pub struct State {
     // Configurations
     selection: Option<(usize, usize)>, // The start and end of selected lines
     prompt: Option<String>, // The string printed out when accepting commands
     file: Option<String>,// The one to write to by default
+    #[derivative(Debug="ignore")]
+    syntax_lib: SyntaxSet,
+    #[derivative(Debug="ignore")]
+    theme_lib: ThemeSet,
     print_errors: bool,
     // state variables
     done: bool, // Marks that it is time to exit
@@ -34,6 +42,8 @@ impl State {
             selection: None,
             prompt: None,
             file: None,
+            syntax_lib: SyntaxSet::load_defaults_newlines(),
+            theme_lib: ThemeSet::load_defaults(),
             print_errors: false,
             done: false,
             error: None,

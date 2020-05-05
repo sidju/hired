@@ -247,6 +247,7 @@ impl <'a> Parse<Cmd<'a>> {
         // The universal flags
         let p = unpk(from.stage.input.find('p'), &mut unidentified);
         let n = unpk(from.stage.input.find('n'), &mut unidentified);
+        let h = unpk(from.stage.input.find('h'), &mut unidentified);
         let l = unpk(from.stage.input.find('l'), &mut unidentified);
         // Identify the command
         let cmd = match from.stage.command {
@@ -262,6 +263,7 @@ impl <'a> Parse<Cmd<'a>> {
                         state: from.stage.state,
                         selection: from.stage.selection,
                         n: n,
+                        h: h,
                         l: l,
                     })
                 })
@@ -275,6 +277,7 @@ impl <'a> Parse<Cmd<'a>> {
                         index: from.stage.selection.1 + 1,
                         p: p,
                         n: n,
+                        h: h,
                         l: l,
                     })
                 })
@@ -288,6 +291,7 @@ impl <'a> Parse<Cmd<'a>> {
                         index: from.stage.selection.0,
                         p: p,
                         n: n,
+                        h: h,
                         l: l,
                     })
                 })
@@ -301,6 +305,7 @@ impl <'a> Parse<Cmd<'a>> {
                         selection: from.stage.selection,
                         p: p,
                         n: n,
+                        h: h,
                         l: l,
                     })
                 })
@@ -325,7 +330,18 @@ impl <'a> Parse<Cmd<'a>> {
                         g: g,
                         p: p,
                         n: n,
+                        h: h,
                         l: l,
+                    })
+                })
+            },
+            'e' => {
+                // All of the input should be filename => no unidentified
+                unidentified = 0;
+                Ok(Self{
+                    stage: Cmd::Open(Open{
+                        state: from.stage.state,
+                        path: &from.stage.input[..from.stage.input.len() - 1],
                     })
                 })
             },

@@ -4,26 +4,42 @@ use syntect::parsing::SyntaxSet;
 use syntect::highlighting::Theme;
 use syntect::util::as_24_bit_terminal_escaped;
 
-pub fn _format_print(
-    syntax_lib: SyntaxSet,
+pub fn format_print(
+    syntax_lib: &SyntaxSet,
     theme: &Theme,
-    _filename: &str, // To figure out filetype
+    filename: &str, // To figure out filetype
     lines: &[String],
     offset: usize,
     n: bool,
+    h: bool, // highlighting
     _l: bool
 ) {
-    let syntax = syntax_lib.find_syntax_by_extension("rs")
-        .unwrap(); // TODO: fix
-    let mut highlighter = HighlightLines::new(syntax, theme);
-    for (i, line) in lines.iter().enumerate() {
-        let highlighted = highlighter.highlight(line, &syntax_lib);
-        let escaped = as_24_bit_terminal_escaped(&highlighted[..], true);
-        if n {
-            println!("{}:\t{}",i + offset, escaped);
+    if h {
+        let tmp = syntax_lib.find_syntax_for_file(filename);
+        let syntax = tmp
+            .unwrap_or_else(|_| Some(syntax_lib.find_syntax_plain_text()))
+            .unwrap_or_else(|| syntax_lib.find_syntax_plain_text());
+        let mut highlighter = HighlightLines::new(syntax, theme);
+        for (i, line) in lines.iter().enumerate() {
+            let highlighted = highlighter.highlight(line, &syntax_lib);
+            let escaped = as_24_bit_terminal_escaped(&highlighted[..], false);
+            if n {
+                print!("{}:\t{}",i + offset, escaped);
+            }
+            else {
+                print!("{}", escaped);
+            }
         }
-        else {
-            println!("{}", escaped);
+        print!("\x1b[0m");
+    }
+    else {
+        for (i, line) in lines.iter().enumerate() {
+            if n {
+                print!("{}:\t{}",i + offset, line);
+            }
+            else {
+                print!("{}", line);
+            }
         }
     }
 }

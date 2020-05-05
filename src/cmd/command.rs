@@ -27,7 +27,7 @@ pub enum Cmd<'a> {
     Substitute(Substitute<'a>), // Regex search and replace over selection
 
     // ForceOpen(Open<'a>), // Open given file into new buffer ignoring unsaved
-    // Open(Open<'a>), // Open given file into new buffer
+    Open(Open<'a>), // Open given file into new buffer
     Read(Read<'a>), // Append contents of given file to selection
     Write(Write<'a>), // Write the selection to given file
 }
@@ -39,6 +39,7 @@ pub struct Print<'a> {
     pub selection: (usize, usize),
     // Flags
     pub n: bool,
+    pub h: bool,
     pub l: bool,
 }
 impl <'a> Print<'a> {
@@ -47,6 +48,7 @@ impl <'a> Print<'a> {
     fn from_state(
         state: &'a mut State,
         n: bool,
+        h: bool,
         l: bool,
     ) -> Self {
         Self {
@@ -54,6 +56,7 @@ impl <'a> Print<'a> {
                 .unwrap_or_else(||(0 as usize, state.buffer.len())),
             state: state,
             n: n,
+            h: h,
             l: l
         }
     }
@@ -68,6 +71,7 @@ pub struct Insert<'a> {
     // Flags
     pub p: bool,
     pub n: bool,
+    pub h: bool,
     pub l: bool,
 }
 #[derive(Derivative)]
@@ -87,6 +91,7 @@ pub struct Change<'a> {
     // Flags
     pub p: bool,
     pub n: bool,
+    pub h: bool,
     pub l: bool,
 }
 #[derive(Derivative)]
@@ -100,6 +105,7 @@ pub struct Substitute<'a> {
     pub g: bool,
     pub p: bool,
     pub n: bool,
+    pub h: bool,
     pub l: bool,
 }
 #[derive(Derivative)]
@@ -112,6 +118,13 @@ pub struct Read<'a> {
 }
 #[derive(Derivative)]
 #[derivative(Debug)]
+pub struct Open<'a> {
+    #[derivative(Debug="ignore")]
+    pub state: &'a mut State,
+    pub path: &'a str,
+}
+#[derive(Derivative)]
+#[derivative(Debug)]
 pub struct Write<'a> {
     #[derivative(Debug="ignore")]
     pub state: &'a mut State,
@@ -120,7 +133,7 @@ pub struct Write<'a> {
 }
 impl <'a> Cmd<'a> {
     /// A simple debug printout
-    pub fn debug_print(&self) {
+    pub fn _debug_print(&self) {
         println!("{:?}", self);
     }
     /// Execute the command with stored arguments
@@ -149,10 +162,17 @@ impl <'a> Cmd<'a> {
                 let output = print.state.buffer.get_selection(
                     print.selection,
                 )?;
-                // Print it
-                for line in output {
-                    print!("{}", line);
-                }
+                // Send it to the printer
+                crate::io::format_print(
+                    &print.state.syntax_lib,
+                    &print.state.theme_lib.themes["base16-ocean.dark"],
+                    print.state.file.as_ref().unwrap_or(&"".to_string()),
+                    output,
+                    print.selection.0,
+                    print.n,
+                    print.h,
+                    print.l,
+                );
                 // And update the selection
                 print.state.selection = Some(print.selection);
                 Ok(())
@@ -175,6 +195,7 @@ impl <'a> Cmd<'a> {
                     Self::Print(Print::from_state(
                         insert.state,
                         insert.n,
+                        insert.h,
                         insert.l,
                     )).execute()?;
                 }
@@ -200,6 +221,7 @@ impl <'a> Cmd<'a> {
                     Self::Print(Print::from_state(
                         change.state,
                         change.n,
+                        change.h,
                         change.l,
                     )).execute()?;
                 }
@@ -212,10 +234,23 @@ impl <'a> Cmd<'a> {
                         substitute.selection,
                         substitute.g
                     )?;
-                // Just mark the whole selection as selected
                 substitute.state.selection = Some(new_selection);
+                // TODO: Add print option to substitute
                 Ok(())
             },
+            Self::Open(mut open) => {
+                let path = match open.path {
+                    "" => return Err("No file specified"),
+                    x => x,
+                };
+                let mut data = crate::file::read_file(path)?;
+                let datalen = data.len();
+                open.state.buffer = crate::buffer::VecBuffer::new();
+                open.state.buffer.insert(&mut data, 0)?;
+                open.state.file = Some(path.to_string());
+                open.state.selection = Some((0, datalen));
+                Ok(())
+            }
             Self::Read(mut read) => {
                 let path = match read.path {
                     "" => match &read.state.file {

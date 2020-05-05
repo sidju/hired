@@ -13,6 +13,6 @@ pub fn parse_and_run(
 ) -> Result<(), &'static str> {
     // Parse the command
     let cmd = parse(state, &mut command)?;
-    cmd.debug_print();
+    //cmd.debug_print();
     cmd.execute()
 }
