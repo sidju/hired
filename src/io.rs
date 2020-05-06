@@ -24,7 +24,7 @@ pub fn format_print(
             let highlighted = highlighter.highlight(line, &syntax_lib);
             let escaped = as_24_bit_terminal_escaped(&highlighted[..], false);
             if n {
-                print!("{}:\t{}",i + offset, escaped);
+                print!("{}:\t{}",i + offset + 1, escaped);
             }
             else {
                 print!("{}", escaped);
@@ -35,7 +35,7 @@ pub fn format_print(
     else {
         for (i, line) in lines.iter().enumerate() {
             if n {
-                print!("{}:\t{}",i + offset, line);
+                print!("{}:\t{}",i + offset + 1, line);
             }
             else {
                 print!("{}", line);
