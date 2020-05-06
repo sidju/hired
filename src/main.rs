@@ -54,7 +54,8 @@ impl State {
 }
 
 fn main() {
-    println!("Welcome to red, the rust-ed.");
+    println!("Welcome to hired. Ed with highlighting written in rust.");
+    println!("Use the h flag on your print commands to enable highlighting.");
     //println!("For assistance, enter '?'.");
 
     // Init command string
