@@ -4,7 +4,7 @@ use crate::Buffer;
 use super::command::*;
 
 // Consts for selection parsing
-const SELECTION_PARSE_ERR: &str = "Could not parse given selection.";
+const INDEX_PARSE_ERR: &str = "Could not parse given index.";
 const SELECTION_OUT_OF_BOUNDS: &str = "Selection out of bounds.";
 const SELECTION_INVERTED: &str = "Selection is empty or inverted.";
 
@@ -43,6 +43,27 @@ fn unpk<T>(option: Option<T>, decounter: &mut usize) -> bool {
     }
 }
 
+fn parse_index(index: &str, selection: usize, default: usize, bufferlen: usize)
+  -> Result<usize, &'static str>
+{
+  if index.len() == 0 {
+    Ok(default)
+  }
+  else {
+    match index {
+      "." => Ok(selection),
+      "$" => Ok(bufferlen),
+      "+" => Ok(selection + 1),
+      "-" => Ok(selection - 1),
+      _ => { match index.chars().next() {
+        Some('-') => index[1..].parse::<usize>().map(|x| selection - x ),
+        Some('+') => index[1..].parse::<usize>().map(|x| selection + x ),
+        _ => index.parse::<usize>()
+      }.map_err(|_| INDEX_PARSE_ERR)},
+    }
+  }
+}
+
 // A parsing state machine
 // Each state is the task completed when the state is active
 struct Parse<S> {
@@ -68,7 +89,6 @@ struct Expression<'a> {
     #[derivative(Debug="ignore")]
     state: &'a mut crate::State,
 }
-
 // The state transitions for the parser
 impl <'a> Parse<Init<'a>> {
     fn new(input: &'a str, state: &'a mut crate::State) -> Self {
@@ -83,28 +103,6 @@ impl <'a> Parse<Command<'a>> {
     fn command(from: Parse<Init<'a>>) -> Result<Self, &'static str> {
         let bufferlen = from.stage.state.buffer.len();
         let selection = from.stage.state.selection.unwrap_or_else(||(0 as usize, bufferlen));
-        let parse_index = | index: &str, selection: usize, default: usize | -> Result<usize, &str> {
-            if index.len() == 0 {
-                Ok(default)
-            }
-            else {
-                match index {
-                    "." => Ok(selection),
-                    "$" => Ok(bufferlen),
-                    "+" => Ok(selection + 1),
-                    "-" => Ok(selection - 1),
-                    _ => { match index.chars().next() {
-                        Some('-') => index[1..]
-                            .parse::<usize>()
-                            .map(|x| x - 1),
-                        Some('+') => index[1..]
-                            .parse::<usize>()
-                            .map(|x| x + 1),
-                        _ => index.parse::<usize>()
-                    }.map_err(|_| SELECTION_PARSE_ERR)},
-                }
-            }
-        };
         // Separate out the index of the first command, an the selection str
         let (command_index, string) =
             match find_any_of(VALID_COMMANDS, from.stage.input) {
@@ -124,12 +122,12 @@ impl <'a> Parse<Command<'a>> {
                     // If the found one is ';' the default shift
                     // from 1,bufferlen to selection.0,bufferlen
                     let (start, end) = if string.chars().next() == Some(',') {
-                        (parse_index(&string[..x], selection.0, 1)?,
-                         parse_index(&string[x+1..], selection.1, bufferlen)?)
+                         (parse_index(&string[..x], selection.0, 1, bufferlen)?,
+                          parse_index(&string[x+1..], selection.1, bufferlen, bufferlen)?)
                     }
                     else {
-                        (parse_index(&string[..x], selection.0, 1)?,
-                         parse_index(&string[x+1..], selection.1, bufferlen)?)
+                         (parse_index(&string[..x], selection.0, selection.0, bufferlen)?,
+                          parse_index(&string[x+1..], selection.1, bufferlen, bufferlen)?)
                     };
                     // Handle assorted edge cases
                     if end > bufferlen {
@@ -150,8 +148,7 @@ impl <'a> Parse<Command<'a>> {
                 None => {
                     // If no ',' exists we check if one index was given
                     // It is treated as end
-                    let lone = parse_index(string, selection.1, bufferlen)?;
-                    // Avoid panics from overshooting the buffer length
+                       let lone = parse_index(string, selection.1, bufferlen, bufferlen)?;
                     if lone > bufferlen {
                         Err(SELECTION_OUT_OF_BOUNDS)
                     }
@@ -288,7 +285,7 @@ impl <'a> Parse<Cmd<'a>> {
                     stage: Cmd::Insert(Insert{
                         input: input,
                         state: from.stage.state,
-                        index: from.stage.selection.0,
+                        index: from.stage.selection.0 + 1,
                         p: p,
                         n: n,
                         h: h,
@@ -318,6 +315,46 @@ impl <'a> Parse<Cmd<'a>> {
                     })
                 })
             },
+            'm' => {
+               unidentified = 0;
+               let index = parse_index(
+                 &from.stage.input[..from.stage.input.len() - 1],
+                 from.stage.selection.1,
+                 from.stage.selection.1,
+                 from.stage.state.buffer.len(),
+               )?;
+               Ok(Self{
+                 stage: Cmd::Move(Move{
+                   state: from.stage.state,
+                   selection: from.stage.selection,
+                   index: index,
+                 })
+               })
+            }
+            't' => {
+               unidentified = 0;
+               let index = parse_index(
+                 &from.stage.input[..from.stage.input.len() - 1],
+                 from.stage.selection.1,
+                 from.stage.selection.1,
+                 from.stage.state.buffer.len(),
+               )?;
+               Ok(Self{
+                 stage: Cmd::Copy(Copy{
+                   state: from.stage.state,
+                   selection: from.stage.selection,
+                   index: index,
+                 })
+               })
+            }
+            'j' => {
+              Ok(Self{
+                stage: Cmd::Join(Join{
+                  state: from.stage.state,
+                  selection: from.stage.selection,
+                })
+              })
+            }
             's' => {
                 let g = unpk(from.stage.input.find('g'), &mut unidentified);
                 let reg = from.stage.expression[0];

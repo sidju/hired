@@ -43,6 +43,7 @@ fn write(filepath: &str, data: &[String]) -> std::io::Result<()> {
     use std::io::{BufWriter, Write};
     let file = std::fs::OpenOptions::new()
         .write(true)
+        .truncate(true) // Delete current contents if any
         .create(true) // Create if not found
         .open(filepath)?;
     let mut writer = BufWriter::new(file);

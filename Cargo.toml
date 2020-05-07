@@ -1,7 +1,7 @@
 [package]
 name = "hired"
 description = "Highlighted rust clone of ed"
-version = "0.1.1"
+version = "0.1.2"
 homepage = "https://github.com/sidju/hired"
 repository = "https://github.com/sidju/hired"
 readme = "README.md"

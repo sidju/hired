@@ -10,6 +10,12 @@ pub trait Buffer {
   fn delete(&mut self, selection: (usize, usize)) -> Result<(), &'static str> ;
   /// Delete the given selection and insert the given data in its place
   fn change(&mut self, data: &mut Vec<String>, selection: (usize, usize)) -> Result<(), &'static str> ;
+  /// Move selection to index
+  fn mov(&mut self, selection: (usize, usize), index: usize) -> Result<(), &'static str> ;
+  /// Copy selection to index
+  fn copy(&mut self, selection: (usize, usize), index: usize) -> Result<(), &'static str> ;
+  /// Join all lines in selection into one line
+  fn join(&mut self, selection: (usize, usize)) -> Result<(), &'static str> ;
   /// Perform regex search and replace on the selection changing pattern.0 to pattern.1
   /// Returns selection, since it may delete or add lines
   fn search_replace(&mut self, pattern: (&str, &str), selection: (usize, usize), global: bool) -> Result<(usize, usize), &'static str> ;
@@ -124,6 +130,63 @@ impl Buffer for VecBuffer
       }
       Err("Invalid selection.")
     }
+  }
+  fn mov(&mut self, selection: (usize, usize), index: usize) -> Result<(), &'static str> {
+    self.verify_selection(selection)?;
+    self.verify_index(index - 1)?;
+    if index - 1 < selection.0 {
+      // split out the relevant parts of the buffer
+      let mut tail = self.buffer.split_off(selection.1);
+      let mut data = self.buffer.split_off(selection.0);
+      let mut middle = self.buffer.split_off(index - 1);
+      // Reassemble
+      self.buffer.append(&mut data);
+      self.buffer.append(&mut middle);
+      self.buffer.append(&mut tail);
+      Ok(())
+    }
+    else if index - 1 >= selection.1 {
+      // split out the relevant parts of the buffer
+      let mut tail = self.buffer.split_off(index);
+      let mut middle = self.buffer.split_off(selection.1);
+      let mut data = self.buffer.split_off(selection.0);
+      // Reassemble
+      self.buffer.append(&mut middle);
+      self.buffer.append(&mut data);
+      self.buffer.append(&mut tail);
+      Ok(())
+    }
+    else {
+      Err("Cannot move selection into itself.")
+    }
+  }
+  fn copy(&mut self, selection: (usize, usize), index: usize) -> Result<(), &'static str> {
+    self.verify_selection(selection)?;
+    self.verify_index(index)?;
+    // Get the data
+    let mut data = Vec::new();
+    for line in &self.buffer[selection.0 .. selection.1] {
+      data.push(line.clone());
+    }
+    // Insert it
+    let mut tail = self.buffer.split_off(index);
+    self.buffer.append(&mut data);
+    self.buffer.append(&mut tail);
+    Ok(())
+  }
+  fn join(&mut self, selection: (usize, usize)) -> Result<(), &'static str> {
+    self.verify_selection(selection)?;
+    let mut tail = self.buffer.split_off(selection.1);
+    let data = self.buffer.split_off(selection.0);
+    let mut newline = String::new();
+    for line in data {
+      newline.push_str(&line); // Add in the line
+      newline.pop(); // Remove the newline from it
+    }
+    newline.push('\n');
+    self.buffer.push(newline);
+    self.buffer.append(&mut tail);
+    Ok(())
   }
   fn search_replace(&mut self, pattern: (&str, &str), selection: (usize, usize), global: bool) -> Result<(usize, usize), &'static str>
   {

@@ -16,9 +16,9 @@ pub enum Cmd<'a> {
     Delete(Delete<'a>), // Delete the selection
     Change(Change<'a>), // Replace selection with given text
 
-    // Move(Move<'a>), // Moves selection to given index
-    // Copy(Copy<'a>), // Copy the selection to given index
-    // Join(Join<'a>), // Join the selection into one line
+    Move(Move<'a>), // Moves selection to given index
+    Copy(Copy<'a>), // Copy the selection to given index
+    Join(Join<'a>), // Join the selection into one line
 
     // Cut(Cut<'a>), // Cut selection from buffer
     // Paste(Paste<'a>), // Append what was last cut to selection
@@ -93,6 +93,29 @@ pub struct Change<'a> {
     pub n: bool,
     pub h: bool,
     pub l: bool,
+}
+#[derive(Derivative)]
+#[derivative(Debug)]
+pub struct Move<'a> {
+  #[derivative(Debug="ignore")]
+  pub state: &'a mut State,
+  pub selection: (usize, usize),
+  pub index: usize,
+}
+#[derive(Derivative)]
+#[derivative(Debug)]
+pub struct Copy<'a> {
+  #[derivative(Debug="ignore")]
+  pub state: &'a mut State,
+  pub selection: (usize, usize),
+  pub index: usize,
+}
+#[derive(Derivative)]
+#[derivative(Debug)]
+pub struct Join<'a> {
+  #[derivative(Debug="ignore")]
+  pub state: &'a mut State,
+  pub selection: (usize, usize),
 }
 #[derive(Derivative)]
 #[derivative(Debug)]
@@ -227,6 +250,24 @@ impl <'a> Cmd<'a> {
                 }
                 Ok(())
             },
+            Self::Move(mut mov) => {
+      let new_selection = (mov.index, mov.index + mov.selection.1 - mov.selection.0);
+              mov.state.buffer.mov(mov.selection, mov.index)?;
+              mov.state.selection = Some(new_selection);
+              Ok(())
+            },  
+        Self::Copy(mut copy) => {
+        let new_selection = (copy.index, copy.index + copy.selection.1 - copy.selection.0);
+              copy.state.buffer.copy(copy.selection, copy.index)?;
+              copy.state.selection = Some(new_selection);
+              Ok(())
+            },
+      Self::Join(mut join) => {
+        let new_selection = (join.selection.0, join.selection.0 + 1);
+        join.state.buffer.join(join.selection)?;
+        join.state.selection = Some(new_selection);
+        Ok(())
+      },
             Self::Substitute(mut substitute) => {
                 let new_selection =
                     substitute.state.buffer.search_replace(
