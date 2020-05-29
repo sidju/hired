@@ -195,7 +195,9 @@ impl Buffer for VecBuffer
     if selection.0 < selection.1 && selection.1 <= self.buffer.len() {
       self.saved = false; // TODO: actually check if changes are made
       // Compile the regex used to match/extract data
-      let regex = Regex::new(pattern.0).expect("Failed to create pattern regex.");
+      let regex = Regex::new(pattern.0)
+        .map_err(|_| "Invalid regex entered.")
+        ?;
       let mut selection_after = selection;
       if global {
         // Cut out the whole selection from buffer
