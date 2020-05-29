@@ -1,5 +1,6 @@
 use std::io::ErrorKind;
 const PERMISSION_DENIED_ERR: &str = "Could not open file. Permission denied.";
+const FILE_NOT_FOUND: &str = "Could not open file. Not found.";
 const UNKNOWN_ERR: &str = "Unknown error while reading file.";
 
 /// File IO abstractions
@@ -8,7 +9,7 @@ pub fn read_file(filepath: &str) -> Result<Vec<String>, &'static str> {
     Ok(x) => Ok(x),
     Err(e) => match e.kind() {
       ErrorKind::PermissionDenied => Err(PERMISSION_DENIED_ERR),
-      ErrorKind::NotFound => Ok(Vec::new()),
+      ErrorKind::NotFound => Err(FILE_NOT_FOUND),
       _ => {
         #[cfg(feature = "debug")] // Debug printouts if debug flag
         { println!("Error: {:?}", e); }
