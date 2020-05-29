@@ -1,25 +1,43 @@
+use std::io::ErrorKind;
+const PERMISSION_DENIED_ERR: &str = "Could not open file. Permission denied.";
+const UNKNOWN_ERR: &str = "Unknown error while reading file.";
+
 /// File IO abstractions
 pub fn read_file(filepath: &str) -> Result<Vec<String>, &'static str> {
-    read(filepath)
-        .map_err(|e: std::io::Error| match e.kind() {
-            std::io::ErrorKind::PermissionDenied => "Could not open file. Permission denied.",
-            _ => {
-                #[cfg(feature = "debug")] // Debug printouts if debug flag
-                { println!("Error: {:?}", e); }
-                "Unknown error while reading file."
-            },
-        })
+  match read(filepath) {
+    Ok(x) => Ok(x),
+    Err(e) => match e.kind() {
+      ErrorKind::PermissionDenied => Err(PERMISSION_DENIED_ERR),
+      ErrorKind::NotFound => Ok(Vec::new()),
+      _ => {
+        #[cfg(feature = "debug")] // Debug printouts if debug flag
+        { println!("Error: {:?}", e); }
+        Err(UNKNOWN_ERR)
+      },
+    },
+  }
 }
 pub fn write_file(filepath: &str, data: &[String]) -> Result<(), &'static str> {
-    write(filepath, data)
-        .map_err(|e: std::io::Error| match e.kind() {
-            std::io::ErrorKind::PermissionDenied => "Could not open file. Permission denied.",
-            _ => {
-                #[cfg(feature = "debug")] // Debug printouts if debug flag
-                { println!("Error: {:?}", e); }
-                "Unknown error while writing file."
-            },
-        })
+  write(filepath, data)
+    .map_err(|e: std::io::Error| match e.kind() {
+      ErrorKind::PermissionDenied => PERMISSION_DENIED_ERR,
+      _ => {
+        #[cfg(feature = "debug")] // Debug printouts if debug flag
+        { println!("Error: {:?}", e); }
+        UNKNOWN_ERR
+      },
+    })
+}
+pub fn append_file(filepath: &str, data: &[String]) -> Result<(), &'static str> {
+  append(filepath, data)
+    .map_err(|e: std::io::Error| match e.kind() {
+      ErrorKind::PermissionDenied => "Could not open file. Permission denied.",
+      _ => {
+        #[cfg(feature = "debug")] // Debug printouts if debug flag
+        { println!("Error: {:?}", e); }
+        UNKNOWN_ERR
+      },
+    })
 }
 
 fn read(filepath: &str) -> std::io::Result<Vec<String>> {
@@ -44,6 +62,21 @@ fn write(filepath: &str, data: &[String]) -> std::io::Result<()> {
     let file = std::fs::OpenOptions::new()
         .write(true)
         .truncate(true) // Delete current contents if any
+        .create(true) // Create if not found
+        .open(filepath)?;
+    let mut writer = BufWriter::new(file);
+    for line in data {
+        if line.len() != writer.write(line.as_bytes())? {
+            panic!("Didn't write the entire line. Change write to write_all");
+        }
+    }
+    writer.flush()?;
+    Ok(())
+}
+fn append(filepath: &str, data: &[String]) -> std::io::Result<()> {
+    use std::io::{BufWriter, Write};
+    let file = std::fs::OpenOptions::new()
+        .append(true)
         .create(true) // Create if not found
         .open(filepath)?;
     let mut writer = BufWriter::new(file);
