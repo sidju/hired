@@ -131,23 +131,26 @@ impl Buffer for VecBuffer
       Err("Invalid selection.")
     }
   }
-  fn mov(&mut self, selection: (usize, usize), index: usize) -> Result<(), &'static str> {
+  fn mov(&mut self, selection: (usize, usize), mut index: usize) -> Result<(), &'static str> {
     self.verify_selection(selection)?;
-    self.verify_index(index - 1)?;
-    if index - 1 < selection.0 {
+    self.verify_index(index)?;
+    println!("index: {}, selection: {},{}", index, selection.0, selection.1);
+    //0 is valid but needs to be specially handled
+    if index != 0 { index -= 1; }
+    if index < selection.0 {
       // split out the relevant parts of the buffer
       let mut tail = self.buffer.split_off(selection.1);
       let mut data = self.buffer.split_off(selection.0);
-      let mut middle = self.buffer.split_off(index - 1);
+      let mut middle = self.buffer.split_off(index);
       // Reassemble
       self.buffer.append(&mut data);
       self.buffer.append(&mut middle);
       self.buffer.append(&mut tail);
       Ok(())
     }
-    else if index - 1 >= selection.1 {
+    else if index >= selection.1 {
       // split out the relevant parts of the buffer
-      let mut tail = self.buffer.split_off(index);
+      let mut tail = self.buffer.split_off(index + 1);
       let mut middle = self.buffer.split_off(selection.1);
       let mut data = self.buffer.split_off(selection.0);
       // Reassemble
@@ -216,9 +219,7 @@ impl Buffer for VecBuffer
         }
         // Add to the buffer
         for newline in after.split('\n') {
-          if newline.len() > 0 {
-            self.buffer.push(format!("{}\n", newline));
-          }
+          self.buffer.push(format!("{}\n", newline));
         }
         selection_after.1 = self.buffer.len();
         self.buffer.append(&mut tail); // And put the tail back on
@@ -238,9 +239,7 @@ impl Buffer for VecBuffer
             }
             // Add to the buffer
             for newline in after.split('\n') {
-              if newline.len() > 0 {
-                self.buffer.push(format!("{}\n", newline));
-              }
+              self.buffer.push(format!("{}\n", newline));
             }
             selection_after.1 = self.buffer.len();
             self.buffer.append(&mut tail); // And put the tail back on
