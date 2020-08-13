@@ -1,4 +1,27 @@
-TODO:
-* Update state.file on read
-* Make all methods on buffer utilise the 'check_selection' method
-* Imprement proper print method with syntax highlighting
+Regarding commands:
+
+To simplify parsing commands should be grouped into a few types.
+
+SimpleCommand: Just uses the given command. For example q, h, w.
+BaseCommand: Only uses the given command and a selection. For example j, d, a, i.
+ComplexCommand: Uses a selection, the given command and arguments. For example s, g, m.
+
+Simple command and base command could use unified parsing. Complex command needs evaluation
+before deciding on how to handle those arguments. It might be an option to always use separators.
+
+One could probably unite SimpleCommand and Base command, since SimpleCommands will just ignore the
+selection they are given.
+
+The point where it all starts to fall apart is the print flags. The way they can be used with 'most'
+commands causes the greatest collection of redundant code I know of. Either all or none, I say!
+One might argue that they aren't useful, but they are the old solution to the viewport problem that
+I want to solve. An old solution better suited to paper output.
+
+One can either forbid them completely or always send in print flags with the rest of the command.
+The latter would need to handle what printing after save means (,p I suppose) and if qp is allowed.
+But that may be better than killing functionality.
+
+Regarding selections:
+
+To improve usability it might be better to just set the default selection to the whole buffer.
+The current system (taken from ed) causes several gotchas and annoying quirks.

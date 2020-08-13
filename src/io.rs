@@ -1,41 +1,42 @@
 /// IO abstractions
+use crate::State;
+
 use syntect::easy::HighlightLines;
 use syntect::parsing::SyntaxSet;
 use syntect::highlighting::Theme;
 use syntect::util::as_24_bit_terminal_escaped;
 
 pub fn format_print(
-    syntax_lib: &SyntaxSet,
-    theme: &Theme,
-    filename: &str, // To figure out filetype
+    state: &State,
     lines: &[String],
     offset: usize,
     n: bool,
-    h: bool, // highlighting
     _l: bool
 ) {
-    if h {
-        let tmp = syntax_lib.find_syntax_for_file(filename);
+    if true {
+        let theme = &state.theme_lib.themes["base16-ocean.dark"];
+        let tmp = state.syntax_lib
+          .find_syntax_for_file(&state.file.as_ref().unwrap_or(&String::new()));
         let syntax = tmp
-            .unwrap_or_else(|_| Some(syntax_lib.find_syntax_plain_text()))
-            .unwrap_or_else(|| syntax_lib.find_syntax_plain_text());
+            .unwrap_or_else(|_| Some(state.syntax_lib.find_syntax_plain_text()))
+            .unwrap_or_else(|| state.syntax_lib.find_syntax_plain_text());
         let mut highlighter = HighlightLines::new(syntax, theme);
         for (i, line) in lines.iter().enumerate() {
-            let highlighted = highlighter.highlight(line, &syntax_lib);
+            let highlighted = highlighter.highlight(line, &state.syntax_lib);
             let escaped = as_24_bit_terminal_escaped(&highlighted[..], false);
             if n {
-                print!("{}:\t{}",i + offset + 1, escaped);
+                print!("{}: {}",i + offset + 1, escaped);
             }
             else {
                 print!("{}", escaped);
             }
+            print!("\x1b[0m");
         }
-        print!("\x1b[0m");
     }
     else {
         for (i, line) in lines.iter().enumerate() {
             if n {
-                print!("{}:\t{}",i + offset + 1, line);
+                print!("{}: {}",i + offset + 1, line);
             }
             else {
                 print!("{}", line);

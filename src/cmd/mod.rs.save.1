@@ -63,6 +63,8 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       state.selection = Some(sel);
       Ok(())
     }
+
+
     Some(cmd) => {
       Err(UNDEFINED_COMMAND)
     }

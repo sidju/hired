@@ -5,6 +5,8 @@
 #[macro_use]
 extern crate derivative;
 
+pub mod error_consts;
+
 mod io;
 mod cmd;
 mod buffer;
@@ -44,7 +46,7 @@ impl State {
             file: None,
             syntax_lib: SyntaxSet::load_defaults_newlines(),
             theme_lib: ThemeSet::load_defaults(),
-            print_errors: false,
+            print_errors: true,
             done: false,
             error: None,
             stdin: std::io::stdin(),
@@ -71,11 +73,16 @@ fn main() {
         io::read_command(&mut state, &mut command);
 
         // Handle command
-        match cmd::parse_and_run(&mut state, &mut command) {
+        match cmd::run(&mut state, &mut command) {
             Ok(()) => {},
             Err(e) => {
                 state.error = Some(e);
-                println!("?");
+                if state.print_errors {
+                  println!("{}", e);
+                }
+                else {
+                  println!("?");
+                }
             },
         }
     }
