@@ -18,21 +18,12 @@ pub fn read_file(filepath: &str) -> Result<Vec<String>, &'static str> {
     },
   }
 }
-pub fn write_file(filepath: &str, data: &[String]) -> Result<(), &'static str> {
-  write(filepath, data)
+pub fn write_file(filepath: &str, data: &[String], append: bool)
+  -> Result<(), &'static str>
+{
+  write(filepath, data, append)
     .map_err(|e: std::io::Error| match e.kind() {
       ErrorKind::PermissionDenied => PERMISSION_DENIED_ERR,
-      _ => {
-        #[cfg(feature = "debug")] // Debug printouts if debug flag
-        { println!("Error: {:?}", e); }
-        UNKNOWN_ERR
-      },
-    })
-}
-pub fn append_file(filepath: &str, data: &[String]) -> Result<(), &'static str> {
-  append(filepath, data)
-    .map_err(|e: std::io::Error| match e.kind() {
-      ErrorKind::PermissionDenied => "Could not open file. Permission denied.",
       _ => {
         #[cfg(feature = "debug")] // Debug printouts if debug flag
         { println!("Error: {:?}", e); }
@@ -58,26 +49,12 @@ fn read(filepath: &str) -> std::io::Result<Vec<String>> {
     }
     Ok(data)
 }
-fn write(filepath: &str, data: &[String]) -> std::io::Result<()> {
+fn write(filepath: &str, data: &[String], append: bool) -> std::io::Result<()> {
     use std::io::{BufWriter, Write};
     let file = std::fs::OpenOptions::new()
         .write(true)
-        .truncate(true) // Delete current contents if any
-        .create(true) // Create if not found
-        .open(filepath)?;
-    let mut writer = BufWriter::new(file);
-    for line in data {
-        if line.len() != writer.write(line.as_bytes())? {
-            panic!("Didn't write the entire line. Change write to write_all");
-        }
-    }
-    writer.flush()?;
-    Ok(())
-}
-fn append(filepath: &str, data: &[String]) -> std::io::Result<()> {
-    use std::io::{BufWriter, Write};
-    let file = std::fs::OpenOptions::new()
-        .append(true)
+        .append(append)
+        .truncate(!append) // Delete current contents if any
         .create(true) // Create if not found
         .open(filepath)?;
     let mut writer = BufWriter::new(file);

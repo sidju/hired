@@ -8,7 +8,7 @@ pub const UNDEFINED_COMMAND: &str = "Command not defined.";
 
 // Command specific errors
 pub const SELECTION_FORBIDDEN: &str = "That command doesn't take a selection.";
-pub const UNSAVED_CHANGES: &str = "You have unsaved changes. Force quit with 'Q' or save with 'w' before quitting.";
+pub const UNSAVED_CHANGES: &str = "Unsaved changes. Force with the capitalised version of your command or save with 'w'.";
 
 pub const EXPRESSION_TOO_SHORT_ERR: &str = "Expression too short or not closed.";
 pub const ONE_EXPRESSION_COMMANDS: &str =

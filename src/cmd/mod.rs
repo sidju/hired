@@ -42,8 +42,94 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       state.print_errors = !state.print_errors; // Toggle the setting
       Ok(())
     }
+    // File commands
+    // TODO: Unify filename handling
+    // TODO: Unify 'r' with 'e' and 'E'
+    Some('f') => { // Set or print filename
+      if selection != Sel::Lone(Ind::Default) { return Err(SELECTION_FORBIDDEN); }
+      match &command[cmd_i + 1 .. command.len()-1] {
+        "" => { // Print current filename
+          println!("{:?}", state.file);
+        },
+        x => { // Set new filename
+          state.file = Some(x.to_string());
+        }
+      }
+      Ok(())
+    }
+    Some('e') | Some('E') => {
+      if selection != Sel::Lone(Ind::Default) { return Err(SELECTION_FORBIDDEN); }
+      if !state.buffer.saved() & (command[cmd_i..].chars().next() == Some('e')) {
+        Err(UNSAVED_CHANGES)
+      }
+      else {
+        // Get the path (cutting of the command char and the trailing newline)
+        let path = match &command[cmd_i + 1 .. command.len()-1] {
+          "" => match state.file.as_ref() {
+            Some(x) => x,
+            None => "",
+          },
+          x => x,
+        };
+        // Read the data from the file
+        let mut data = crate::file::read_file(path)?;
+        let datalen = data.len();
+        // Insert into a clean buffer
+        state.buffer = crate::buffer::VecBuffer::new();
+        state.buffer.insert(&mut data, 0)?;
+        state.buffer.set_saved();
+        state.file = Some(path.to_string());
+        state.selection = Some((0, datalen));
+        Ok(())
+      }
+    },
+    Some('r') => {
+      // Get the index to append at
+      let index = interpret_selection(selection, state.selection, state.buffer.len(), true).1;
+      // Get the path (cutting of the command char and the trailing newline)
+      let path = match &command[cmd_i + 1 .. command.len()-1] {
+        "" => match state.file.as_ref() {
+          Some(x) => x,
+          None => "",
+        },
+        x => x,
+      };
+      // Read the data from the file
+      let mut data = crate::file::read_file(path)?;
+      let datalen = data.len();
+      // Append to the buffer at given index
+      state.buffer.insert(&mut data, index)?;
+      // Update file only if not set before (TODO: Maybe not do this? It is quite weird.)
+      if state.file == None { state.file = Some(path.to_string()); }
+      state.selection = Some((index, index + datalen));
+      Ok(())
+    },
+    Some('w') | Some('W') => {
+      // Get the selection to write
+      let sel = interpret_selection(selection, state.selection, state.buffer.len(), true);
+      // Get the path (cutting of the command char and the trailing newline)
+      let path = match &command[cmd_i + 1 .. command.len()-1] {
+        "" => match state.file.as_ref() {
+          Some(x) => x,
+          None => "",
+        },
+        x => x,
+      };
+      // Get the data
+      let data = state.buffer.get_selection(sel)?;
+      let append = command[cmd_i..].chars().next() == Some('W');
+      // Write it into the file (append if 'W')
+      crate::file::write_file(path, data, append);
+      // If all was written, update state.file and set saved
+      if sel == (0, state.buffer.len()) {
+        state.buffer.set_saved();
+        state.file = Some(path.to_string());
+      }
+      state.selection = Some(sel);
+      Ok(())
+    }
     // Print commands
-    // TODO, change this to an update of selection and always check for print flags
+    // TODO: change this to an update of selection and always check for print flags
     Some('p') | Some('n') | Some('l') => {
       // Identify which flags are set
       let mut n = false;
@@ -111,6 +197,11 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       state.selection = None;
       Ok(())
     }
+    // Advanced editing commands
+    // move, join, transfer etc
+    
+    // Regex commands
+    // s and g, is essence
     
     Some(cmd) => {
       Err(UNDEFINED_COMMAND)

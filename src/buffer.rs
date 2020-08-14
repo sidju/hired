@@ -1,4 +1,5 @@
 /// Trait that defines a buffer supporting 'ed's base commands
+/// The verify_ commands are mostly intended for internal use. May be removed from the interface.
 pub trait Buffer {
   /// Check that the index is safe to operate on
   fn verify_index(&self, index: usize) -> Result<(), &'static str> ;
@@ -67,7 +68,7 @@ impl Buffer for VecBuffer
     if index <= self.buffer.len() + 1 {
       self.saved = false;
       //0 is valid but needs to be specially handled
-      if index != 0 { index -= 1; }
+      //if index != 0 { index -= 1; }
       #[cfg(feature = "debug")] // Debug printouts if debug flag
       { println!("inserting at index {}", index); }
       // To minimise time complexity we split the vector immediately

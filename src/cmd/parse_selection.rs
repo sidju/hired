@@ -107,7 +107,7 @@ pub fn interpret_selection(
           if default_all { (0, bufferlen) }
           else { old_sel }
         }
-        Ind::BufferLen => (bufferlen, bufferlen + 1),
+        Ind::BufferLen => (bufferlen - 1, bufferlen),
         Ind::Relative(x) => (add(old_sel.0, x), add(old_sel.1, x)),
         Ind::Literal(x) => (x - (1 * (x != 0) as usize), x)
       }
