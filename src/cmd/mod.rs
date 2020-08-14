@@ -1,4 +1,5 @@
 use crate::error_consts::*;
+use crate::io;
 
 use crate::buffer::Buffer;
 
@@ -12,7 +13,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
   let (cmd_i, selection) = parse_selection(command)?;
 
   // Match the command and act upon it
-  match command.chars().next() {
+  match command[cmd_i..].chars().next() {
     None => Err(NO_COMMAND_ERR),
     // Quit commands
     Some('q') => {
@@ -42,11 +43,12 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       Ok(())
     }
     // Print commands
+    // TODO, change this to an update of selection and always check for print flags
     Some('p') | Some('n') | Some('l') => {
       // Identify which flags are set
       let mut n = false;
       let mut l = false;
-      for char in command[..command.len()-1].chars() {
+      for char in command[cmd_i..command.len()-1].chars() {
         match char {
           'n' => { n = true; },
           'l' => { l = true; },
@@ -63,6 +65,53 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       state.selection = Some(sel);
       Ok(())
     }
+    // Basic editing commands
+    Some('a') => {
+      // Get the input
+      let mut input = io::read_insert(&state);
+      // Calculate the selection
+      let index = interpret_selection(selection, state.selection, state.buffer.len(), false).1;
+      let end = index + input.len();
+      // Insert the data
+      state.buffer.insert(&mut input, index)?;
+      // Update the selection
+      state.selection = Some((index, end));
+      Ok(())
+    }
+    Some('i') => {
+      // Get the input
+      let mut input = io::read_insert(&state);
+      // Calculate the selection
+      let index = interpret_selection(selection, state.selection, state.buffer.len(), false).0;
+      let end = index + input.len();
+      // Insert the data
+      state.buffer.insert(&mut input, index)?;
+      // Update the selection
+      state.selection = Some((index, end));
+      Ok(())
+    }
+    Some('c') => {
+      // Get the input
+      let mut input = io::read_insert(&state);
+      // Calculate the selection
+      let selection = interpret_selection(selection, state.selection, state.buffer.len(), false);
+      let end = selection.0 + input.len();
+      // Perform the replace
+      state.buffer.change(&mut input, selection)?;
+      // Update the selection
+      state.selection = Some((selection.0, end));
+      Ok(())
+    }
+    Some('d') => {
+      // Calculate the selection
+      let selection = interpret_selection(selection, state.selection, state.buffer.len(), false);
+      // Perform the deletion
+      state.buffer.delete(selection)?;
+      // Update the selection
+      state.selection = None;
+      Ok(())
+    }
+    
     Some(cmd) => {
       Err(UNDEFINED_COMMAND)
     }

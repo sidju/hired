@@ -57,6 +57,11 @@ pub fn parse_selection(input: &str)
           // Means we parse the indices separately
           let sel_start = parse_index(&input[..si])?;
           let sel_end = parse_index(&input[si + 1..i])?;
+          // Convert from inclusive 1 indexed to exclusive 0 indexed
+          let sel_start = match sel_start {
+            Ind::Literal(x) => { Ind::Literal(x - ( 1 * (x != 0) as usize ) ) }, // subtract 1 if not 0
+            i => i,
+          };
           if sep == ',' {
             Sel::FromStart(sel_start, sel_end)
           }
@@ -94,17 +99,17 @@ pub fn interpret_selection(
 )
   -> (usize, usize)
 {
-  let old_sel = old_selection.unwrap_or((1, bufferlen));
+  let old_sel = old_selection.unwrap_or((0, bufferlen));
   match selection {
     Sel::Lone(i) => {
       match i {
         Ind::Default => {
-          if default_all { (1, bufferlen) }
+          if default_all { (0, bufferlen) }
           else { old_sel }
         }
         Ind::BufferLen => (bufferlen, bufferlen + 1),
         Ind::Relative(x) => (add(old_sel.0, x), add(old_sel.1, x)),
-        Ind::Literal(x) => (x, x + 1)
+        Ind::Literal(x) => (x - (1 * (x != 0) as usize), x)
       }
     }
     Sel::FromSelection(i, j) => {
@@ -124,7 +129,7 @@ pub fn interpret_selection(
     }
     Sel::FromStart(i, j) => {
       let start = match i {
-        Ind::Default => 1,
+        Ind::Default => 0,
         Ind::BufferLen => bufferlen,
         Ind::Relative(x) => add(old_sel.0, x),
         Ind::Literal(x) => x,
