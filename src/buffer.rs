@@ -135,7 +135,7 @@ impl Buffer for VecBuffer
   fn mov(&mut self, selection: (usize, usize), mut index: usize) -> Result<(), &'static str> {
     self.verify_selection(selection)?;
     self.verify_index(index)?;
-    println!("index: {}, selection: {},{}", index, selection.0, selection.1);
+    //println!("index: {}, selection: {},{}", index, selection.0, selection.1);
     //0 is valid but needs to be specially handled
     if index != 0 { index -= 1; }
     if index < selection.0 {

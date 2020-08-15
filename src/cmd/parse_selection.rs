@@ -81,7 +81,7 @@ pub fn parse_selection(input: &str)
   Err(NO_COMMAND_ERR)
 }
 
-fn add(a: usize, b: i32)
+pub fn u_i_add(a: usize, b: i32)
  -> usize
 {
   if b.is_negative() {
@@ -108,7 +108,7 @@ pub fn interpret_selection(
           else { old_sel }
         }
         Ind::BufferLen => (bufferlen - 1, bufferlen),
-        Ind::Relative(x) => (add(old_sel.0, x), add(old_sel.1, x)),
+        Ind::Relative(x) => (u_i_add(old_sel.0, x), u_i_add(old_sel.1, x)),
         Ind::Literal(x) => (x - (1 * (x != 0) as usize), x)
       }
     }
@@ -116,13 +116,13 @@ pub fn interpret_selection(
       let start = match i {
         Ind::Default => old_sel.0,
         Ind::BufferLen => bufferlen,
-        Ind::Relative(x) => add(old_sel.0, x),
+        Ind::Relative(x) => u_i_add(old_sel.0, x),
         Ind::Literal(x) => x,
       };
       let end = match j {
         Ind::Default => bufferlen,
         Ind::BufferLen => bufferlen,
-        Ind::Relative(x) => add(old_sel.1, x),
+        Ind::Relative(x) => u_i_add(old_sel.1, x),
         Ind::Literal(x) => x,
       };
       (start, end)
@@ -131,13 +131,13 @@ pub fn interpret_selection(
       let start = match i {
         Ind::Default => 0,
         Ind::BufferLen => bufferlen,
-        Ind::Relative(x) => add(old_sel.0, x),
+        Ind::Relative(x) => u_i_add(old_sel.0, x),
         Ind::Literal(x) => x,
       };
       let end = match j {
         Ind::Default => bufferlen,
         Ind::BufferLen => bufferlen,
-        Ind::Relative(x) => add(old_sel.1, x),
+        Ind::Relative(x) => u_i_add(old_sel.1, x),
         Ind::Literal(x) => x,
       };
       (start, end)

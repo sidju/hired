@@ -198,7 +198,44 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       Ok(())
     }
     // Advanced editing commands
-    // move, join, transfer etc
+    // move, transfer, join etc
+    Some('m') | Some('t') => {
+      // Parse the index to move to
+      let index = match parse_index(&(command[cmd_i + 1..command.len()-1])
+        .trim_end_matches(|c: char| c.is_ascii_alphabetic() )
+      )? {
+        Ind::Default => state.selection.unwrap_or((0,state.buffer.len())).1,
+        Ind::BufferLen => state.buffer.len(),
+        Ind::Relative(x) => u_i_add(
+          state.selection.map(|s| s.1).unwrap_or(state.buffer.len()),
+          x
+        ),
+        Ind::Literal(x) => x,
+      };
+      // Calculate the selection
+      let selection = interpret_selection(selection, state.selection, state.buffer.len(), false);
+      let end = index + (selection.1 - selection.0);
+      if command[cmd_i..].chars().next() == Some('m') {
+        // Perform the move
+        state.buffer.mov(selection, index)?;
+      }
+      else {
+        // Copy instead of moving
+        state.buffer.copy(selection, index)?;
+      }
+      // Update the selection
+      state.selection = Some((index, end));
+      Ok(())
+    }
+    Some('j') => {
+      // Calculate the selection
+      let selection = interpret_selection(selection, state.selection, state.buffer.len(), false);
+      // Perform the deletion
+      state.buffer.join(selection)?;
+      // Update the selection
+      state.selection = None; // Could be calculated, but I won't bother now
+      Ok(())
+    }
     
     // Regex commands
     // s and g, is essence
