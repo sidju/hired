@@ -5,6 +5,11 @@ use crate::buffer::Buffer;
 
 mod parse_selection;
 use parse_selection::*;
+mod parse_expressions;
+use parse_expressions::*;
+// TODO:
+// mod parse_filename;
+// mod parse_flags;
 
 pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
   -> Result<(), &'static str>
@@ -119,7 +124,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       let data = state.buffer.get_selection(sel)?;
       let append = command[cmd_i..].chars().next() == Some('W');
       // Write it into the file (append if 'W')
-      crate::file::write_file(path, data, append);
+      crate::file::write_file(path, data, append)?;
       // If all was written, update state.file and set saved
       if sel == (0, state.buffer.len()) {
         state.buffer.set_saved();
@@ -198,7 +203,6 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       Ok(())
     }
     // Advanced editing commands
-    // move, transfer, join etc
     Some('m') | Some('t') => {
       // Parse the index to move to
       let index = match parse_index(&(command[cmd_i + 1..command.len()-1])
@@ -235,12 +239,30 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       // Update the selection
       state.selection = None; // Could be calculated, but I won't bother now
       Ok(())
-    }
-    
+    }    
     // Regex commands
     // s and g, is essence
+    Some('s') /* | Some('g') */ => {
+      // Calculate the selection
+      let selection = interpret_selection(selection, state.selection, state.buffer.len(), false);
+      // Read in the expressions
+      let expressions = parse_expressions(&command[cmd_i + 1 ..]);
+      // Split based on command
+      if command[cmd_i..].chars().next() == Some('s') {
+        if expressions.len() == 3 { // A proper new expression was given
+          let global = expressions[2].contains('g');
+          state.buffer.search_replace((expressions[0], expressions[1]), selection, global)?;         
+        }
+        else { return Err(EXPRESSION_TOO_SHORT); }
+      }
+      else { // implies 'g'
+      }
+      // Update the selection
+      state.selection = None; // Could be calculated, but I won't bother now
+      Ok(())
+    }    
     
-    Some(cmd) => {
+    Some(_cmd) => {
       Err(UNDEFINED_COMMAND)
     }
   }

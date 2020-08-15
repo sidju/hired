@@ -2,8 +2,6 @@
 use crate::State;
 
 use syntect::easy::HighlightLines;
-use syntect::parsing::SyntaxSet;
-use syntect::highlighting::Theme;
 use syntect::util::as_24_bit_terminal_escaped;
 
 pub fn format_print(

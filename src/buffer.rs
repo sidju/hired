@@ -63,7 +63,7 @@ impl Buffer for VecBuffer
     }
     Ok(())
   }
-  fn insert(&mut self, data: &mut Vec<String>, mut index: usize) -> Result<(), &'static str>
+  fn insert(&mut self, data: &mut Vec<String>, index: usize) -> Result<(), &'static str>
   {
     if index <= self.buffer.len() + 1 {
       self.saved = false;

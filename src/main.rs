@@ -5,6 +5,10 @@
 #[macro_use]
 extern crate derivative;
 
+use syntect::parsing::SyntaxSet;
+use syntect::highlighting::ThemeSet;
+
+
 pub mod error_consts;
 
 mod io;
@@ -12,10 +16,7 @@ mod cmd;
 mod buffer;
 mod file;
 
-use syntect::parsing::SyntaxSet;
-use syntect::highlighting::ThemeSet;
-
-use buffer::{VecBuffer, Buffer};
+use buffer::VecBuffer;
 
 
 // Runtime variables
