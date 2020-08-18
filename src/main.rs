@@ -25,8 +25,8 @@ use buffer::VecBuffer;
 pub struct State {
     // Configurations
     selection: Option<(usize, usize)>, // The start and end of selected lines
-    prompt: Option<String>, // The string printed out when accepting commands
-    file: Option<String>,// The one to write to by default
+    prompt: String, // The string printed out when accepting commands
+    file: String,// The one to write to by default
     #[derivative(Debug="ignore")]
     syntax_lib: SyntaxSet,
     #[derivative(Debug="ignore")]
@@ -43,8 +43,8 @@ impl State {
     pub fn new() -> Self {
         Self {
             selection: None,
-            prompt: None,
-            file: None,
+            prompt: String::new(),
+            file: String::new(),
             syntax_lib: SyntaxSet::load_defaults_newlines(),
             theme_lib: ThemeSet::load_defaults(),
             print_errors: true,

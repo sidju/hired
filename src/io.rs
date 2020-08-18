@@ -14,7 +14,7 @@ pub fn format_print(
     if true {
         let theme = &state.theme_lib.themes["base16-ocean.dark"];
         let tmp = state.syntax_lib
-          .find_syntax_for_file(&state.file.as_ref().unwrap_or(&String::new()));
+          .find_syntax_for_file(&state.file);
         let syntax = tmp
             .unwrap_or_else(|_| Some(state.syntax_lib.find_syntax_plain_text()))
             .unwrap_or_else(|| state.syntax_lib.find_syntax_plain_text());
@@ -45,11 +45,8 @@ pub fn format_print(
 pub fn read_command(state: &mut crate::State, command: &mut String) {
     // Clear the line, since read_line appends
     command.clear();
-    // Print prompt if relevant
-    match &state.prompt {
-        Some(p) => print!("{}", p),
-        None => {},
-    }
+    // Print prompt
+    print!("{}", &state.prompt);
     // Read input
     loop {
         match state.stdin.read_line(command) {

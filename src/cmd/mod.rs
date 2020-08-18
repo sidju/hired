@@ -7,8 +7,10 @@ mod parse_selection;
 use parse_selection::*;
 mod parse_expressions;
 use parse_expressions::*;
+mod parse_path;
+use parse_path::*;
+
 // TODO:
-// mod parse_filename;
 // mod parse_flags;
 
 pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
@@ -48,78 +50,63 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       Ok(())
     }
     // File commands
-    // TODO: Unify filename handling
-    // TODO: Unify 'r' with 'e' and 'E'
     Some('f') => { // Set or print filename
       if selection != Sel::Lone(Ind::Default) { return Err(SELECTION_FORBIDDEN); }
-      match &command[cmd_i + 1 .. command.len()-1] {
-        "" => { // Print current filename
-          println!("{:?}", state.file);
+      match parse_path(&command[cmd_i + 1 ..]) {
+        None => { // Print current filename
+          if state.file.len() == 0 {
+            println!("No file set.");
+          }
+          else {
+            println!("Current file is: {}", state.file);
+          }
         },
-        x => { // Set new filename
-          state.file = Some(x.to_string());
+        Some(x) => { // Set new filename
+          state.file = x.to_string();
         }
       }
       Ok(())
     }
-    Some('e') | Some('E') => {
-      if selection != Sel::Lone(Ind::Default) { return Err(SELECTION_FORBIDDEN); }
+    Some('e') | Some('E') | Some('r') => {
+      // Read the selection if 'r', else error on any selection and return 0 on none (Lone default == no input)
+      let index = 
+        if command[cmd_i..].chars().next() == Some('r') {
+          Ok(interpret_selection(selection, state.selection, state.buffer.len(), true).1)
+        }
+        else {
+          if selection == Sel::Lone(Ind::Default) {
+            Ok(0)
+          }
+          else {
+            Err(SELECTION_FORBIDDEN)
+          }
+        }?;
+      // Only 'e' cares if the buffer is saved
       if !state.buffer.saved() & (command[cmd_i..].chars().next() == Some('e')) {
         Err(UNSAVED_CHANGES)
       }
       else {
         // Get the path (cutting of the command char and the trailing newline)
-        let path = match &command[cmd_i + 1 .. command.len()-1] {
-          "" => match state.file.as_ref() {
-            Some(x) => x,
-            None => "",
-          },
-          x => x,
-        };
+        let path = parse_path(&command[cmd_i + 1 ..]).unwrap_or(&state.file);
         // Read the data from the file
         let mut data = crate::file::read_file(path)?;
         let datalen = data.len();
-        // Insert into a clean buffer
-        state.buffer = crate::buffer::VecBuffer::new();
-        state.buffer.insert(&mut data, 0)?;
+        // Empty the buffer if not 'r'
+        if command[cmd_i..].chars().next() != Some('r') {
+          state.buffer = crate::buffer::VecBuffer::new();
+        }
+        state.buffer.insert(&mut data, index)?;
         state.buffer.set_saved();
-        state.file = Some(path.to_string());
+        state.file = path.to_string();
         state.selection = Some((0, datalen));
         Ok(())
       }
-    },
-    Some('r') => {
-      // Get the index to append at
-      let index = interpret_selection(selection, state.selection, state.buffer.len(), true).1;
-      // Get the path (cutting of the command char and the trailing newline)
-      let path = match &command[cmd_i + 1 .. command.len()-1] {
-        "" => match state.file.as_ref() {
-          Some(x) => x,
-          None => "",
-        },
-        x => x,
-      };
-      // Read the data from the file
-      let mut data = crate::file::read_file(path)?;
-      let datalen = data.len();
-      // Append to the buffer at given index
-      state.buffer.insert(&mut data, index)?;
-      // Update file only if not set before (TODO: Maybe not do this? It is quite weird.)
-      if state.file == None { state.file = Some(path.to_string()); }
-      state.selection = Some((index, index + datalen));
-      Ok(())
     },
     Some('w') | Some('W') => {
       // Get the selection to write
       let sel = interpret_selection(selection, state.selection, state.buffer.len(), true);
       // Get the path (cutting of the command char and the trailing newline)
-      let path = match &command[cmd_i + 1 .. command.len()-1] {
-        "" => match state.file.as_ref() {
-          Some(x) => x,
-          None => "",
-        },
-        x => x,
-      };
+      let path = parse_path(&command[cmd_i + 1 ..]).unwrap_or(&state.file);
       // Get the data
       let data = state.buffer.get_selection(sel)?;
       let append = command[cmd_i..].chars().next() == Some('W');
@@ -128,7 +115,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       // If all was written, update state.file and set saved
       if sel == (0, state.buffer.len()) {
         state.buffer.set_saved();
-        state.file = Some(path.to_string());
+        state.file = path.to_string();
       }
       state.selection = Some(sel);
       Ok(())
