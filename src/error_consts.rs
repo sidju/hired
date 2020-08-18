@@ -12,3 +12,4 @@ pub const UNSAVED_CHANGES: &str = "Unsaved changes. Force with the capitalised v
 // Post-command parsing errors
 pub const EXPRESSION_TOO_SHORT: &str = "Expression too short or not closed.";
 pub const UNDEFINED_FLAG: &str = "Unknown flag entered.";
+pub const DUPLICATE_FLAG: &str = "A flag was entered twice.";

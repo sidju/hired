@@ -9,13 +9,18 @@ mod parse_expressions;
 use parse_expressions::*;
 mod parse_path;
 use parse_path::*;
+mod parse_flags;
+use parse_flags::*;
 
-// TODO:
-// mod parse_flags;
 
 pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
   -> Result<(), &'static str>
 {
+  // Declare flags for printing after the command has been executed.
+  let mut p = false;
+  let mut n = false;
+  let mut l = false;
+
   // Parse out the command index and the selection
   let (cmd_i, selection) = parse_selection(command)?;
 
@@ -123,24 +128,15 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
     // Print commands
     // TODO: change this to an update of selection and always check for print flags
     Some('p') | Some('n') | Some('l') => {
-      // Identify which flags are set
-      let mut n = false;
-      let mut l = false;
-      for char in command[cmd_i..command.len()-1].chars() {
-        match char {
-          'n' => { n = true; },
-          'l' => { l = true; },
-          'p' => { },
-          _ => return Err(UNDEFINED_FLAG),
-        }
-      }
-      // Normalise the selection and get its lines
+      // Get and update the selection.
       let sel = interpret_selection(selection, state.selection, state.buffer.len(), false);
-      let output = state.buffer.get_selection(sel)?;
-      // Print the output
-      crate::io::format_print( state, output, sel.0, n, l );
-      // And save the selection
       state.selection = Some(sel);
+      // Get the flags
+      let mut flags = parse_flags(&command[cmd_i..], [('p', false), ('n', false), ('l', false)].iter().cloned().collect())?;
+      // Set the global print flags (safe to unwrap since parse_flags never removes a key)
+      p = flags.remove(&'p').unwrap();
+      n = flags.remove(&'n').unwrap();
+      l = flags.remove(&'l').unwrap();
       Ok(())
     }
     // Basic editing commands
@@ -247,10 +243,24 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       // Update the selection
       state.selection = None; // Could be calculated, but I won't bother now
       Ok(())
-    }    
-    
+    }
     Some(_cmd) => {
       Err(UNDEFINED_COMMAND)
     }
+  }?;
+  
+  // If print flags are set, print
+  if p | n | l {
+    if let Some(sel) = state.selection {
+      // Get selection
+      let output = state.buffer.get_selection(sel)?;
+      // Print it
+      crate::io::format_print(state, output, sel.0, n, l);
+    }
+    else {
+      Err(SELECTION_INVERTED)?
+    }
   }
+
+  Ok(())
 }
