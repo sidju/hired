@@ -24,34 +24,38 @@ use buffer::VecBuffer;
 #[derivative(Debug)]
 pub struct State {
     // Configurations
-    selection: Option<(usize, usize)>, // The start and end of selected lines
     prompt: String, // The string printed out when accepting commands
+    print_errors: bool,
+    // state variables
+    selection: Option<(usize, usize)>, // The start and end of selected lines
     file: String,// The one to write to by default
+    done: bool, // Marks that it is time to exit
+    error: Option<&'static str>, // Tracks the latest error
+    stdin: std::io::Stdin, // The stdin is shared, to avoid conflicting opens
+    term_size: (usize,usize),
+    #[derivative(Debug="ignore")]
+    buffer: VecBuffer, // The editing buffer
     #[derivative(Debug="ignore")]
     syntax_lib: SyntaxSet,
     #[derivative(Debug="ignore")]
     theme_lib: ThemeSet,
-    print_errors: bool,
-    // state variables
-    done: bool, // Marks that it is time to exit
-    error: Option<&'static str>, // Tracks the latest error
-    stdin: std::io::Stdin, // The stdin is shared, to avoid conflicting opens
-    #[derivative(Debug="ignore")]
-    buffer: VecBuffer, // The editing buffer
 }
 impl State {
     pub fn new() -> Self {
         Self {
-            selection: None,
             prompt: String::new(),
-            file: String::new(),
-            syntax_lib: SyntaxSet::load_defaults_newlines(),
-            theme_lib: ThemeSet::load_defaults(),
             print_errors: true,
+
+            selection: None,
+            file: String::new(),
             done: false,
             error: None,
+            term_size: crossterm::terminal::size().map(|(a,b)| (a as usize, b as usize)).unwrap_or((80,24)),
+
             stdin: std::io::stdin(),
             buffer: VecBuffer::new(),
+            syntax_lib: SyntaxSet::load_defaults_newlines(),
+            theme_lib: ThemeSet::load_defaults(),
         }
     }
 }
@@ -72,6 +76,9 @@ fn main() {
 
         // Read command
         io::read_command(&mut state, &mut command);
+
+        // Update the terminal size before running commands
+        state.term_size = crossterm::terminal::size().map(|(a,b)| (a as usize, b as usize)).unwrap_or((80,24));
 
         // Handle command
         match cmd::run(&mut state, &mut command) {

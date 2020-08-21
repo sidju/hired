@@ -5,7 +5,7 @@ pub fn parse_expressions(input: &str)
     Some(ch) => ch,
     None => return Vec::new(),
   };
-  input
+  input[1..]
     .split(separator)
     .collect()
 }

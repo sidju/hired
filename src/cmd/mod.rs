@@ -24,15 +24,24 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
   // Parse out the command index and the selection
   let (cmd_i, selection) = parse_selection(command)?;
 
+  // Use the cmd_i to get a clean selection
+  let clean = &command[cmd_i + 1..].trim();
+
   // Match the command and act upon it
-  match command[cmd_i..].chars().next() {
-    None => Err(NO_COMMAND_ERR),
+  match command[cmd_i..].trim().chars().next() {
+    // No command is valid. It updates selection and thus works as a print when viewer is on
+    None => {
+      // Get and update the selection.
+      let sel = interpret_selection(selection, state.selection, state.buffer.len(), false);
+      state.selection = Some(sel);
+      Ok(())
+    },
     // Quit commands
     Some('q') => {
       if selection != Sel::Lone(Ind::Default) { return Err(SELECTION_FORBIDDEN); }
       if state.buffer.saved() {
         state.done = true;
-        Ok(())
+        return Ok(());
       }
       else {
         Err(UNSAVED_CHANGES)
@@ -41,7 +50,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
     Some('Q') => {
       if selection != Sel::Lone(Ind::Default) { return Err(SELECTION_FORBIDDEN); }
       state.done = true;
-      Ok(())
+      return Ok(());
     }
     // Help commands
     Some('h') => {
@@ -57,7 +66,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
     // File commands
     Some('f') => { // Set or print filename
       if selection != Sel::Lone(Ind::Default) { return Err(SELECTION_FORBIDDEN); }
-      match parse_path(&command[cmd_i + 1 ..]) {
+      match parse_path(clean) {
         None => { // Print current filename
           if state.file.len() == 0 {
             println!("No file set.");
@@ -92,7 +101,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       }
       else {
         // Get the path (cutting of the command char and the trailing newline)
-        let path = parse_path(&command[cmd_i + 1 ..]).unwrap_or(&state.file);
+        let path = parse_path(clean).unwrap_or(&state.file);
         // Read the data from the file
         let mut data = crate::file::read_file(path)?;
         let datalen = data.len();
@@ -111,7 +120,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       // Get the selection to write
       let sel = interpret_selection(selection, state.selection, state.buffer.len(), true);
       // Get the path (cutting of the command char and the trailing newline)
-      let path = parse_path(&command[cmd_i + 1 ..]).unwrap_or(&state.file);
+      let path = parse_path(clean).unwrap_or(&state.file);
       // Get the data
       let data = state.buffer.get_selection(sel)?;
       let append = command[cmd_i..].chars().next() == Some('W');
@@ -132,7 +141,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       let sel = interpret_selection(selection, state.selection, state.buffer.len(), false);
       state.selection = Some(sel);
       // Get the flags
-      let mut flags = parse_flags(&command[cmd_i..], [('p', false), ('n', false), ('l', false)].iter().cloned().collect())?;
+      let mut flags = parse_flags(&command[cmd_i..].trim(), [('p', false), ('n', false), ('l', false)].iter().cloned().collect())?;
       // Set the global print flags (safe to unwrap since parse_flags never removes a key)
       p = flags.remove(&'p').unwrap();
       n = flags.remove(&'n').unwrap();
@@ -181,14 +190,24 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       let selection = interpret_selection(selection, state.selection, state.buffer.len(), false);
       // Perform the deletion
       state.buffer.delete(selection)?;
-      // Update the selection
-      state.selection = None;
+      // Try to have a selection afterwards
+      if state.buffer.len() != 0 {
+        // If we didn't just delete the whole head we can sub one from selection.0 for a valid index
+        let start = if 0 != selection.0 { selection.0 - 1 } else { selection.0 };
+        // If we didn't just delete the whole tail we can add one to selection.0 for a valid index
+        let end = if state.buffer.len() != selection.0 { selection.0 + 1 } else { selection.0 };
+        // Since bufferlen != 0 either start or end have been modified to get a non-empty selection
+        state.selection = Some((start, end));
+      }
+      else {
+        state.selection = None;
+      }
       Ok(())
     }
     // Advanced editing commands
     Some('m') | Some('t') => {
       // Parse the index to move to
-      let index = match parse_index(&(command[cmd_i + 1..command.len()-1])
+      let index = match parse_index(clean
         .trim_end_matches(|c: char| c.is_ascii_alphabetic() )
       )? {
         Ind::Default => state.selection.unwrap_or((0,state.buffer.len())).1,
@@ -220,7 +239,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       // Perform the deletion
       state.buffer.join(selection)?;
       // Update the selection
-      state.selection = None; // Could be calculated, but I won't bother now
+      state.selection = Some((selection.0, selection.0 + 1)); // Guaranteed to exist, maybe to improve
       Ok(())
     }    
     // Regex commands
@@ -229,19 +248,20 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       // Calculate the selection
       let selection = interpret_selection(selection, state.selection, state.buffer.len(), false);
       // Read in the expressions
-      let expressions = parse_expressions(&command[cmd_i + 1 ..]);
+      let expressions = parse_expressions(clean);
       // Split based on command
       if command[cmd_i..].chars().next() == Some('s') {
         if expressions.len() == 3 { // A proper new expression was given
           let global = expressions[2].contains('g');
-          state.buffer.search_replace((expressions[0], expressions[1]), selection, global)?;         
+          // Perform the command, which returns the resulting selection
+          state.selection = Some(
+            state.buffer.search_replace((expressions[0], expressions[1]), selection, global)?
+          );         
         }
         else { return Err(EXPRESSION_TOO_SHORT); }
       }
       else { // implies 'g'
       }
-      // Update the selection
-      state.selection = None; // Could be calculated, but I won't bother now
       Ok(())
     }
     Some(_cmd) => {
@@ -259,6 +279,19 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
     }
     else {
       Err(SELECTION_INVERTED)?
+    }
+  }
+  // Othewise, print the height of the terminal -2 lines from start of the selection - 5 or so
+  else {
+    if let Some(sel) = state.selection {
+      // Handle the cases where we would go out of index bounds
+      let start = sel.0.saturating_sub(5);
+      let end = 
+        if state.buffer.len() < (state.term_size.1 - 1 + start) { state.buffer.len() }
+        else { start + (state.term_size.1 - 1) }
+      ;
+      let output = state.buffer.get_selection((start,end))?;
+      crate::io::format_print(state, output, start, true, false); // TODO: Handle flags
     }
   }
 

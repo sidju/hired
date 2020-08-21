@@ -13,9 +13,8 @@ pub fn format_print(
 ) {
     if true {
         let theme = &state.theme_lib.themes["base16-ocean.dark"];
-        let tmp = state.syntax_lib
-          .find_syntax_for_file(&state.file);
-        let syntax = tmp
+        let syntax = state.syntax_lib
+            .find_syntax_for_file(&state.file)
             .unwrap_or_else(|_| Some(state.syntax_lib.find_syntax_plain_text()))
             .unwrap_or_else(|| state.syntax_lib.find_syntax_plain_text());
         let mut highlighter = HighlightLines::new(syntax, theme);
@@ -23,7 +22,7 @@ pub fn format_print(
             let highlighted = highlighter.highlight(line, &state.syntax_lib);
             let escaped = as_24_bit_terminal_escaped(&highlighted[..], false);
             if n {
-                print!("{}: {}",i + offset + 1, escaped);
+                print!("{}\t|{}",i + offset + 1, escaped);
             }
             else {
                 print!("{}", escaped);

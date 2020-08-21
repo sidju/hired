@@ -1,7 +1,7 @@
 [package]
 name = "hired"
 description = "Highlighted rust clone of ed"
-version = "0.1.2"
+version = "0.2.0"
 homepage = "https://github.com/sidju/hired"
 repository = "https://github.com/sidju/hired"
 readme = "README.md"
@@ -23,5 +23,4 @@ debug = []
 regex = "1.3"
 syntect = { version = "4.1", default-features = false, features = ["default-fancy"]}
 derivative = "2.1" 
-enum_from_str = "0.1"
-enum_from_str_derive = "0.1"
+crossterm = "0.17"

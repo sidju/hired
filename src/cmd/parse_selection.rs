@@ -4,14 +4,14 @@
 
 use crate::error_consts::*;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum Ind {
   Default,
   BufferLen,
   Relative(i32),
   Literal(usize),
 }
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum Sel {
   FromStart(Ind, Ind),
   FromSelection(Ind, Ind),
@@ -46,12 +46,14 @@ pub fn parse_selection(input: &str)
   let mut sep_i = None;
 
   for (i, char) in input.char_indices() {
+    // Find the separator, if any
     if char == ',' || char == ';' {
       if sep_i != None { return Err(INDEX_PARSE_ERR); } // Multiple separators given
       // Save index and which separator it is
       sep_i = Some((i, char));
     }
-    else if char.is_ascii_alphabetic() {
+    // When we reach the command, use the collected data to parse
+    else if char.is_ascii_alphabetic() | (char == '\n') {
       let sel = match sep_i {
         Some((si, sep)) => {
           // Means we parse the indices separately

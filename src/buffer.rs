@@ -219,10 +219,10 @@ impl Buffer for VecBuffer
           after.push_str(&tail.remove(0));
         }
         // Add to the buffer
-        for newline in after.split('\n') {
+        for newline in after.split_terminator('\n') {
           self.buffer.push(format!("{}\n", newline));
         }
-        selection_after.1 = self.buffer.len();
+        selection_after.1 = self.buffer.len(); // The end of the affected area
         self.buffer.append(&mut tail); // And put the tail back on
       }
       else {
@@ -239,10 +239,10 @@ impl Buffer for VecBuffer
               after.push_str(&tail.remove(0));
             }
             // Add to the buffer
-            for newline in after.split('\n') {
+            for newline in after.split_terminator('\n') {
               self.buffer.push(format!("{}\n", newline));
             }
-            selection_after.1 = self.buffer.len();
+            selection_after.1 = self.buffer.len(); // The end of the affected area
             self.buffer.append(&mut tail); // And put the tail back on
             break;
           }
