@@ -17,7 +17,7 @@ mod buffer;
 mod file;
 
 use buffer::VecBuffer;
-
+use buffer::Buffer;
 
 // Runtime variables
 #[derive(Derivative)]
@@ -70,6 +70,31 @@ fn main() {
 
     // Init state
     let mut state = State::new();
+
+    // Read in and handle command line arguments
+    let mut first = true;
+    for arg in std::env::args() {
+        if !first {
+            match arg.chars().next() {
+                // Eventually handle command line flags
+                //Some('-') => 
+                // TODO: Make something less horrifying to handle errors here
+                _ => match (||->Result<(),&str> {
+                  let mut data = file::read_file(&arg)?;
+                  let datalen = data.len();
+                  state.buffer.insert(&mut data, 0)?;
+                  state.buffer.set_saved();
+                  state.file = arg;
+                  state.selection = Some((0, datalen));
+                  Ok(())
+                })() {
+                  Ok(_) => {},
+                  Err(e) => { println!("{}", e); }
+                },
+            }
+        }
+        first = false;
+    }
 
     // Loop until done. Take, identify and execute commands
     while !state.done {
