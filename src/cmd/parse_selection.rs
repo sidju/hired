@@ -53,7 +53,7 @@ pub fn parse_selection(input: &str)
       sep_i = Some((i, char));
     }
     // When we reach the command, use the collected data to parse
-    else if char.is_ascii_alphabetic() | (char == '\n') {
+    else if char.is_ascii_alphabetic() | (char == '\n') | (char == '?') {
       let sel = match sep_i {
         Some((si, sep)) => {
           // Means we parse the indices separately

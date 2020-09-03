@@ -13,7 +13,7 @@ Commands that take no input or selection.
 - h: Print Error. Print the last occured error.
 - H: Toggle Error Printing. Toggle printing errors as they occur.
 
-### File errors:
+### File commands:
 - f: If no filepath is given, prints filepath. Else sets the filepath to given path.
 - e: Closes current file and opens the given path. Returns error if you have unsaved changes.
 - E: Closes current file and opens the given path, ignoring unsaved changes.
