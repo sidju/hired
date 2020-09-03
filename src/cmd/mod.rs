@@ -54,6 +54,11 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
         return Ok(());
       }
       // Help commands
+      '?' => {
+        if selection != Sel::Lone(Ind::Default) { return Err(SELECTION_FORBIDDEN); }
+        println!("{}", HELP_TEXT);
+        Ok(())
+      },
       'h' => {
         if selection != Sel::Lone(Ind::Default) { return Err(SELECTION_FORBIDDEN); }
         println!("{:?}", state.error);
