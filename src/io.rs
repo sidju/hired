@@ -9,8 +9,10 @@ pub fn format_print(
     lines: &[String],
     offset: usize,
     n: bool,
-    _l: bool
+    l: bool
 ) {
+  crate::ui::print_view(state, lines, offset, n, l);
+/*
     if true {
         let theme = &state.theme_lib.themes["base16-ocean.dark"];
         let syntax = state.syntax_lib
@@ -40,6 +42,7 @@ pub fn format_print(
             }
         }
     }
+*/
 }
 pub fn read_command(state: &mut crate::State, command: &mut String) {
     // Clear the line, since read_line appends

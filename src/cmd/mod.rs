@@ -294,8 +294,8 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       // Handle the cases where we would go out of index bounds
       let start = sel.0.saturating_sub(5);
       let end = 
-        if state.buffer.len() < (state.term_size.1 - 1 + start) { state.buffer.len() }
-        else { start + (state.term_size.1 - 1) }
+        if state.buffer.len() < (state.term_size.1 - 2 + start) { state.buffer.len() }
+        else { start + (state.term_size.1 - 2) }
       ;
       let output = state.buffer.get_selection((start,end))?;
       crate::io::format_print(state, output, start, true, false); // TODO: Handle flags

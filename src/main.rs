@@ -16,6 +16,8 @@ mod cmd;
 mod buffer;
 mod file;
 
+mod ui;
+
 use buffer::VecBuffer;
 use buffer::Buffer;
 
@@ -70,6 +72,8 @@ fn main() {
 
     // Init state
     let mut state = State::new();
+
+    // TODO: Add handling of custom config and custom themes!!!
 
     // Read in and handle command line arguments
     let mut first = true;
