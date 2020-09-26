@@ -1,12 +1,8 @@
 /// IO abstractions
 use crate::State;
 
-// Used for printing with color and style
-use syntect::easy::HighlightLines;
-
 use crossterm::{QueueableCommand, ErrorKind, style::Print};
 use std::io::{Write, stdout};
-
 
 // Start with the printing helpers
 
@@ -103,12 +99,15 @@ pub fn print_view(
   l: bool,
 ) -> Result<(), ErrorKind> {
   // Get the highlighting settings
-  let theme = &state.theme_lib.themes["base16-eighties.dark"];
+  let theme_source = include_bytes!("../../assets/theme.xml");
+  let mut theme_reader = std::io::Cursor::new(&theme_source[..]);
+  let theme = syntect::highlighting::ThemeSet::load_from_reader(&mut theme_reader).unwrap();
+
   let syntax = state.syntax_lib.find_syntax_for_file(&state.file)
     .unwrap_or(None)
     .unwrap_or_else(|| state.syntax_lib.find_syntax_plain_text());
   // Create the highlighter, which statefully styles the text over lines.
-  let mut highlighter = HighlightLines::new(syntax, theme);
+  let mut highlighter = syntect::easy::HighlightLines::new(syntax, &theme);
 
   // Create a connection to the terminal, that we print through
   let mut out = stdout();
@@ -116,13 +115,22 @@ pub fn print_view(
   // Track lines printed, to break when we have printed the terminal height
   let mut lines_printed = 0;
 
+  // Count characters printed, for wrapping. Use 'i' since everything uses it
+  let mut i = 0;
+
   // Arguably one should give the highlighter all lines before the selection.
   // Otherwise it fails to understand multiline stuff, but not worth it to me. 
   // PR's welcome
   for line in text {
     // To handle wrapping, print character by character
-    // Count characters printed, for wrapping. Use 'i' since everything uses it
-    let mut i = 0;
+    
+    // If i isn't a multiple of the screen size we want to pad with space, to ensure colors are set correctly
+    for _ in 0 .. (state.term_size.0 - (i % state.term_size.0)) {
+      out.queue(Print(' '))?;
+    }
+
+    // Then we can clear i
+    i = 0;
 
     // Highlight the text.
     let highlighted = highlighter.highlight(line, &state.syntax_lib);
@@ -184,7 +192,7 @@ pub fn print_view(
   reset_style(&mut out)?;
   out.queue(Print('\n'))?;
   // Add the separator
-  print_separator(&mut out, state.term_size.0);
+  print_separator(&mut out, state.term_size.0)?;
   // Finally we flush the buffer, to make sure we actually have printed everything
   out.flush()?;
   Ok(())
