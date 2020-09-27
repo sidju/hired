@@ -1,49 +1,6 @@
 /// IO abstractions
 use crate::State;
 
-use syntect::easy::HighlightLines;
-use syntect::util::as_24_bit_terminal_escaped;
-
-pub fn format_print(
-    state: &State,
-    lines: &[String],
-    offset: usize,
-    n: bool,
-    l: bool
-) {
-  crate::ui::print_view(state, lines, offset, n, l);
-/*
-    if true {
-        let theme = &state.theme_lib.themes["base16-ocean.dark"];
-        let syntax = state.syntax_lib
-            .find_syntax_for_file(&state.file)
-            .unwrap_or_else(|_| Some(state.syntax_lib.find_syntax_plain_text()))
-            .unwrap_or_else(|| state.syntax_lib.find_syntax_plain_text());
-        let mut highlighter = HighlightLines::new(syntax, theme);
-        for (i, line) in lines.iter().enumerate() {
-            let highlighted = highlighter.highlight(line, &state.syntax_lib);
-            let escaped = as_24_bit_terminal_escaped(&highlighted[..], false);
-            if n {
-                print!("{}\t|{}",i + offset + 1, escaped);
-            }
-            else {
-                print!("{}", escaped);
-            }
-            print!("\x1b[0m");
-        }
-    }
-    else {
-        for (i, line) in lines.iter().enumerate() {
-            if n {
-                print!("{}: {}",i + offset + 1, line);
-            }
-            else {
-                print!("{}", line);
-            }
-        }
-    }
-*/
-}
 pub fn read_command(state: &mut crate::State, command: &mut String) {
     // Clear the line, since read_line appends
     command.clear();

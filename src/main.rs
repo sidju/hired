@@ -6,7 +6,7 @@
 extern crate derivative;
 
 use syntect::parsing::SyntaxSet;
-use syntect::highlighting::ThemeSet;
+use syntect::highlighting::Theme;
 
 
 pub mod error_consts;
@@ -40,10 +40,13 @@ pub struct State {
     #[derivative(Debug="ignore")]
     syntax_lib: SyntaxSet,
     #[derivative(Debug="ignore")]
-    theme_lib: ThemeSet,
+    theme: Theme,
 }
 impl State {
     pub fn new() -> Self {
+        let theme_source = include_bytes!("../assets/theme.xml");
+        let mut theme_reader = std::io::Cursor::new(&theme_source[..]);
+        let theme = syntect::highlighting::ThemeSet::load_from_reader(&mut theme_reader).unwrap();
         Self {
             prompt: String::new(),
             print_errors: true,
@@ -57,7 +60,7 @@ impl State {
             stdin: std::io::stdin(),
             buffer: VecBuffer::new(),
             syntax_lib: SyntaxSet::load_defaults_newlines(),
-            theme_lib: ThemeSet::load_defaults(),
+            theme: theme,
         }
     }
 }

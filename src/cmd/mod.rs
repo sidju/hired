@@ -281,8 +281,8 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
     if let Some(sel) = state.selection {
       // Get selection
       let output = state.buffer.get_selection(sel)?;
-      // Print it
-      crate::io::format_print(state, output, sel.0, n, l);
+      // Print it (static false is to not limit by terminal height)
+      crate::ui::format_print(state, output, sel.0, false, n, l);
     }
     else {
       Err(SELECTION_INVERTED)?
@@ -293,12 +293,9 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
     if let Some(sel) = state.selection {
       // Handle the cases where we would go out of index bounds
       let start = sel.0.saturating_sub(5);
-      let end = 
-        if state.buffer.len() < (state.term_size.1 - 2 + start) { state.buffer.len() }
-        else { start + (state.term_size.1 - 2) }
-      ;
+      let end = state.buffer.len();
       let output = state.buffer.get_selection((start,end))?;
-      crate::io::format_print(state, output, start, true, false); // TODO: Handle flags
+      crate::ui::format_print(state, output, start, true, true, false); // TODO: Handle flags
     }
   }
 
