@@ -1,5 +1,4 @@
 /// IO abstractions
-use crate::State;
 
 pub fn read_command(state: &mut crate::State, command: &mut String) {
     // Clear the line, since read_line appends

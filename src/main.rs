@@ -21,6 +21,9 @@ mod ui;
 use buffer::VecBuffer;
 use buffer::Buffer;
 
+// Store theme as a constant
+const THEME: &[u8] = include_bytes!("../assets/theme.xml");
+
 // Runtime variables
 #[derive(Derivative)]
 #[derivative(Debug)]
@@ -44,8 +47,7 @@ pub struct State {
 }
 impl State {
     pub fn new() -> Self {
-        let theme_source = include_bytes!("../assets/theme.xml");
-        let mut theme_reader = std::io::Cursor::new(&theme_source[..]);
+        let mut theme_reader = std::io::Cursor::new(&THEME[..]);
         let theme = syntect::highlighting::ThemeSet::load_from_reader(&mut theme_reader).unwrap();
         Self {
             prompt: String::new(),

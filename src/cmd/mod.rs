@@ -282,7 +282,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       // Get selection
       let output = state.buffer.get_selection(sel)?;
       // Print it (static false is to not limit by terminal height)
-      crate::ui::format_print(state, output, sel.0, false, n, l);
+      crate::ui::format_print(state, output, sel.0, false, n, l)?;
     }
     else {
       Err(SELECTION_INVERTED)?
@@ -295,7 +295,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       let start = sel.0.saturating_sub(5);
       let end = state.buffer.len();
       let output = state.buffer.get_selection((start,end))?;
-      crate::ui::format_print(state, output, start, true, true, false); // TODO: Handle flags
+      crate::ui::format_print(state, output, start, true, true, false)?; // TODO: Handle flags
     }
   }
 

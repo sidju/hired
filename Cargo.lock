@@ -144,7 +144,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "hired"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "crossterm 0.17.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "derivative 2.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
