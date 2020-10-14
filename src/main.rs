@@ -105,13 +105,6 @@ fn main() {
         first = false;
     }
 
-    // A little test
-    crossterm::terminal::enable_raw_mode().unwrap();
-    for line in ui::get_input(&mut state).unwrap() {
-      println!("{}", line);
-    }
-    crossterm::terminal::disable_raw_mode().unwrap();
-
     // Loop until done. Take, identify and execute commands
     while !state.done {
 

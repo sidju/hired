@@ -28,8 +28,15 @@ pub fn read_command(state: &mut crate::State, command: &mut String) {
         }
     }
 }
-pub fn read_insert(state: &crate::State) -> Vec<String>
+pub fn read_insert(state: &mut crate::State) -> Vec<String>
 {
+  crossterm::terminal::enable_raw_mode().unwrap();
+  let ret = crate::ui::get_input(state).unwrap();
+  crossterm::terminal::disable_raw_mode().unwrap();
+
+  ret
+
+/*
     // Create a variable to save the inserted text into
     let mut insert = Vec::new();
     // Loop until the insert is ended by a lone dot
@@ -61,4 +68,5 @@ pub fn read_insert(state: &crate::State) -> Vec<String>
     }
     // Finally return the collected lines
     insert
+*/
 }
