@@ -102,7 +102,7 @@ fn pad_line(out: &mut impl Write, width: usize, index: usize)
   // Check if we really need to pad or if index is 0
   if pos != 0 {
     let mut pad = String::with_capacity(2 + width - pos);
-    for _ in pos .. width + 1 {
+    for _ in pos .. width {
       pad.push(' ');
     }
     out.queue(Print(pad))?;
@@ -146,7 +146,6 @@ fn format_print_internal(
 
   // Track lines printed, to break when we have printed the terminal height
   let mut lines_printed = 0;
-
   // Count characters printed, for wrapping. Use 'i' since everything uses it
   let mut i = 0;
 
@@ -155,76 +154,76 @@ fn format_print_internal(
   // PR's welcome
   'lines: for line in text {
     // To handle wrapping, print character by character
-    
-    // Pad the lines with blankspace to set bg color
-    pad_line(&mut out, state.term_size.0, i)?;
-    // And separate with a newline
-    out.queue(Print('\n'))?;
-
-    // Then we can clear i
-    i = 0;
 
     // Highlight the text.
     let highlighted = highlighter.highlight(line, &state.syntax_lib);
 
     // Iterate over the segments, setting style before each
     for (style, text) in highlighted {
-      // Check the style and apply it using Crossterm
       apply_style(style, &mut out)?;
 
       for ch in text.chars() {
-        // If i is divisible by terminal width this is a new line
-        if i % state.term_size.0 == 0 {
 
-          // If i isn't 0 it is a wrapped line, so we need to split it
-          if i != 0 { out.queue(Print('\n'))?; }
+        // Print line numbers, if active
+        if n && (i % state.term_size.0 == 0) {
+          // To not colour our numbering we reset styling for this
+          reset_style(&mut out)?;
 
-          lines_printed += 1;
+          // Then we convert our 0-indexed int to a 1 indexed string
+          let tmp_num = (line_nr + 1).to_string();
+          let tmp_num_len = tmp_num.len();
 
-          // Break if we have printed the height of the view window - 2
-          // But only if we are printing as a view
-          if lines_printed + 1 >= state.term_size.1 && as_view { break 'lines; }
-
-          // If we are printing line numbers
-          if n {
-            // To not colour our line numbers we reset styling here.
-            // Can be changed to theme the line numbers
-            reset_style(&mut out)?;
-            // convert the internal 0-indexed integer to a 1-indexed number string
-            let tmp_num = (line_nr + 1).to_string();
-            let tmp_num_len = tmp_num.len();
-            // If this is the first line of the internal line, print the line number
-            if i == 0 {
-              out.queue(Print(tmp_num))?;
-              line_nr += 1;
-            }
-            // Else print padding to keep the edge even
-            else {
-              for _ in 0 .. tmp_num.len() { out.queue(Print(' '))?; }
-            }
-            out.queue(Print('│'))?;
-            i += tmp_num_len + 1; // Mark that we added some chars to the line
-            // Restore the styling
-            apply_style(style, &mut out)?;
+          // If this is a new text line, print line number
+          if i == 0 {
+            out.queue(Print(tmp_num))?;
+            line_nr += 1;
           }
+          // If only a new terminal line, print a neat border
+          else {
+            for _ in 0 .. tmp_num_len { out.queue(Print(' '))?; }
+          }
+          // Print the separator and mark that we added chars to the line
+          out.queue(Print('│'))?;
+          i += tmp_num_len + 1;
+          // And finally restore the styling
+          apply_style(style, &mut out)?;
         }
-        // No matter line changes and all that, look at the actual char
+
+        // Next we print the character in question
         match ch {
-          // Special handling for 'l' printing mode
-          // we don't print '\n', since we must trust the buffer in them only occuring
-          // at ends of lines (where i == 0, so we print '\n' anyways)
-          '\n' => if l { out.queue(Print('$'))?; },
-          '$' => if l { out.queue(Print("\\$"))?; i += 1;} else { out.queue(Print('$'))?; },
-          c => { out.queue(Print(c))?; },
+          '\n' => {
+            // If literal mode, also print $
+            if l { out.queue(Print('$'))?; i += 1; }
+            // This primarily means we reset i, since a new line is created
+            // but that requires the following cleanup
+            pad_line(&mut out, state.term_size.0, i);
+            i = 0;
+          },
+          '$' => if l {
+            out.queue(Print("\\$"))?;
+            i += 2;
+          } else {
+            out.queue(Print('$'))?;
+            i += 1;
+          },
+          c => {
+            out.queue(Print(c))?;
+            i += 1;
+          },
         }
-        // Increment number of chars printed. Not techically correct if it was '\n'
-        // but that should be end of line, which means i is never looked at again
-        i += 1;
+
+        // Then we check if we need to move to a new line
+        if i % state.term_size.0 == 0 {
+          out.queue(Print('\n'))?;
+
+          // So we increment lines printed and check if done
+          lines_printed += 1;
+          if as_view && lines_printed + 2 >= state.term_size.1 {break 'lines;}
+        }
       }
     }
   }
   // Pad and terminate the last line
-  pad_line(&mut out, state.term_size.0, i)?;
   reset_style(&mut out)?;
   print_separator(&mut out, state.term_size.0)?;
   // Finally we flush the buffer, to make sure we actually have printed everything
