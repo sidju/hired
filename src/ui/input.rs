@@ -28,6 +28,90 @@ fn find_boundary(s: &str, i: usize) -> usize {
   i
 }
 
+// A print function that prints the current state of the buffer over the previous state
+// Moves the cursor to the given position after printing
+// Moves 'topdist' lines up before starting printing
+// Returns cursor's distance to top and bottom, respectively
+fn print_input(state: &mut crate::State, out: &mut impl Write, buffer: &Vec<String>, lindex: usize, chindex: usize, topdist: u16)
+  -> Result<(u16, u16), crossterm::ErrorKind>
+{
+  // First go to the top of the previous input
+  if topdist != 0 {
+    out.queue(crossterm::cursor::MoveUp(topdist))?;
+  }
+  out.queue(crossterm::cursor::MoveToColumn(0))?;
+  // And clear all of the previous print
+  out.queue(crossterm::terminal::Clear(crossterm::terminal::ClearType::FromCursorDown))?;
+
+  // A bool to track if we have passed our current cursor index, to find its position
+  let mut passed = false;
+
+  // To track the position of the cursor, by when we passed it in the buffer
+  let mut x: u16 = 0;
+  let mut y: u16 = 0;
+  // And the height of the print, for returning distance to top and bottom
+  let mut height: u16 = 0;
+
+  // Then start looping over the buffer
+  for (linenr, line) in buffer.iter().enumerate() {
+
+    // Create a character to track nr characters printed this line
+    let mut chars_printed = 0;
+
+    // If this isn't the first line, newline and carriage retun
+    if linenr != 0 {
+      out.queue(Print("\n\r"))?;
+      // And incement height and maybe y
+      height += 1;
+      if passed { y += 1; }
+    }
+
+    for (i, ch) in line.char_indices() {
+      // If we haven't reached our current cursor position before, check if we have now.
+      // This by nesting if not found, if lindex == line_i, if chindex == i
+      if ! passed {
+        if lindex <= linenr && chindex <= i {
+          // Set the x coordinate using chars_printed modulo terminal width
+          x = (chars_printed % state.term_size.0) as u16;
+          // And mark chindex as passed
+          passed = true;
+        }
+      }
+    
+      // Ignore characters that are newlines (since they confuse our wrapping and are handled by the end of line)
+      if ch != '\n' && ch != '\r' {
+        // If our current x position is 0 in modulo of the terminal width
+        // we are about to go out the side of the terminal
+        if chars_printed + 1 % state.term_size.0 == 0 {
+          // Print newline and carriage return
+          out.queue(Print("\n\r"))?;
+          // Increment the height of this print
+          height += 1;
+          // If the cursor is marked as found/passed, increment cursor height as well
+          if passed { y += 1; }
+        }
+    
+        // TODO: Handle printing weird characters with other widths than 1
+
+        // Increment the number of characters printed
+        chars_printed += 1;
+        // Finally, print the character
+        out.queue(Print(ch))?;
+      }
+    } // End of chars
+  } // End of lines
+
+  // When done with looping, move the cursor to the calculated coordinates
+  out.queue(crossterm::cursor::MoveToColumn(x + 1))?;
+  if y != 0 {
+    out.queue(crossterm::cursor::MoveUp(y))?;
+  }
+  out.flush()?;
+
+  // Finally we return the distances
+  Ok((height - y, y))
+}
+
 // This input getter runs get_event and buffers the input until a lone . appears on a line
 // Then it returns that buffer.
 pub fn get_input(state: &mut crate::State)
@@ -49,13 +133,8 @@ pub fn get_input(state: &mut crate::State)
   let mut char_size = 0; // The nr of bytes the current char is
   let mut ret = false; // Flag when ready to return
 
-  // Then we create the variables for saving the cursor position
-  // This so that we can maintain relative vertical movement at all times
-  let mut x : u16 = 0;
-  let mut y : u16 = 0;
-
-  // Save the height of our last printout of the input, so we can move back up and overwrite it on updates
-  let mut height: u16 = 0;
+  // For saving the cursor height on screen between printing rounds
+  let mut dists: (u16, u16) = (0,0); // For cursor to top and bottom of print, respectively
 
   // loop getting input events, ignoring those we can't handle.
   while !ret {
@@ -123,83 +202,12 @@ pub fn get_input(state: &mut crate::State)
         _ => (), // Ignore unknown codes
       }
     }
-    // Then print the current state of the buffer and return to our previous position in the text
-
-    // First go to the first char in the buffer, to overwrite
-    if height != y {
-      out.queue(crossterm::cursor::MoveUp(height - y))?;
-    }
-    out.queue(crossterm::cursor::MoveToColumn(0))?;
-
-    // When we are in position we clear this line and all below it
-    out.queue(crossterm::terminal::Clear(crossterm::terminal::ClearType::FromCursorDown))?;
-
-    // A bool to track if we have passed our current cursor index, to find its position
-    let mut passed = false;
-
-    // We must reset our position variables before printing
-    x = 0;
-    y = 0;
-    height = 0;
-
-    // Then start looping over the buffer
-    for (linenr, line) in buffer.iter().enumerate() {
-
-      // Create a character to track nr characters printed this line
-      let mut chars_printed = 0;
-
-      // If this isn't the first line, newline and carriage retun
-      if linenr != 0 {
-        out.queue(Print("\n\r"))?;
-        // And incement height and maybe y
-        height += 1;
-        if passed { y += 1; }
-      }
-
-      for (i, ch) in line.char_indices() {
-    
-        // If we haven't reached our current cursor position before, check if we have now.
-        // This by nesting if not found, if lindex == line_i, if chindex == i
-        if ! passed {
-          if lindex <= linenr && chindex <= i {
-            // Set the x coordinate using chars_printed modulo terminal width
-            x = (chars_printed % state.term_size.0) as u16;
-            // And mark chindex as passed
-            passed = true;
-          }
-        }
-    
-        // Ignore characters that are newlines (since they confuse our wrapping and are handled by the end of line)
-        if ch != '\n' && ch != '\r' {
-
-          // If our current x position is 0 in modulo of the terminal width
-          if chars_printed + 1 % state.term_size.0 == 0 {
-            // Print newline and carriage return
-            out.queue(Print("\n\r"))?;
-            // Increment the height of this print
-            height += 1;
-            // If the cursor is marked as found/passed, increment cursor height as well
-            if passed { y += 1; }
-          }
-      
-          // Increment the number of characters printed
-          chars_printed += 1;
-          // Finally, print the character
-          out.queue(Print(ch))?;
-        }
-      } // End of chars
-    } // End of lines
-
-    // When done with looping, move the cursor to the calculated coordinates
-    out.queue(crossterm::cursor::MoveToColumn(x + 1))?;
-    if y != 0 {
-      out.queue(crossterm::cursor::MoveUp(y))?;
-    }
-    out.flush()?;
+    // Then we print
+    dists = print_input(state, &mut out, &buffer, lindex, chindex, dists.0)?;
   }
   // Just to not overwrite the last entered line, move down and to column 0
   out.queue(crossterm::cursor::MoveToColumn(0))?;
-  out.queue(crossterm::cursor::MoveDown(1))?;
+  out.queue(crossterm::cursor::MoveDown(dists.1 + 1))?;
   // Then return
   Ok(buffer)
 }
