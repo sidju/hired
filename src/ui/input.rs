@@ -73,6 +73,10 @@ pub fn get_input(state: &mut crate::State)
           partial.clear();
           if chindex == 0 {
             // Go to previous line
+            if lindex > 0 {
+              lindex -= 1;
+              chindex = buffer[lindex].len() - 1;
+            }
           }
           else {
             chindex = rfind_boundary(&buffer[lindex], chindex);
@@ -82,6 +86,10 @@ pub fn get_input(state: &mut crate::State)
           partial.clear();
           if chindex == buffer[lindex].len() - 1 {
             // Go to next line
+            if buffer.len() - 1 > lindex {
+              lindex += 1;
+              chindex = 0;
+            }
           }
           else {
             chindex = find_boundary(
@@ -94,6 +102,14 @@ pub fn get_input(state: &mut crate::State)
           partial.clear();
           if chindex == 0 {
             // Join this and preceeding line
+            if lindex != 0 {
+              // Go to end of previous line, remove its newline and append current line
+              let tmp = buffer.remove(lindex);
+              lindex -= 1;
+              buffer[lindex].pop();
+              chindex = buffer[lindex].len();
+              buffer[lindex].push_str(&tmp);
+            }
           }
           else {
             // Just delete preceeding character
