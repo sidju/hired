@@ -1,17 +1,9 @@
 // This module takes events and handles them as text input or commands
 
-// TODO: We need more checks against common errors, like moving past or deleting the newline on a line. Also, cleanup.
-
-  // The Write trait, to flush after each print
-  use std::io::Write;
-  // The trait for queueing commands
-  use crossterm::QueueableCommand;
-  // And print command
-  use crossterm::style::Print;
-  // Move cursor commands
-  use crossterm::cursor::{MoveLeft, MoveRight, SavePosition, RestorePosition};
-  // All the event classes
-  use crossterm::event::{KeyEvent, KeyCode, KeyModifiers, Event};
+// The trait for queueing commands
+use crossterm::QueueableCommand;
+// All the event classes
+use crossterm::event::{KeyCode, KeyModifiers, Event};
 
 // Since unicode is weird and this method is missing from str
 // Finds the nearest char boundary preceeding given index and returns its index
@@ -39,27 +31,53 @@ pub fn get_input(state: &mut crate::State)
   // Set the cursor to be visible, so our moves are visible
   out.queue(crossterm::cursor::Show)?;
 
-  // Create the buffer we store the input in
+    // Create the buffer and the variables to move in it
   let mut buffer = Vec::new();
   buffer.push("\n".to_string());
-  // Add some index variables we'll need
   let mut lindex = 0; // Line index, lin-dex
   let mut chindex = 0; // Char index, ch-index
-  let mut partial = String::with_capacity(4); // To store partial chars
-  let mut ret = false; // Flag when ready to return
 
-  // For saving the cursor height on screen between printing rounds
+  // Then the distances we need to remember between printing
   let mut dists: (u16, u16) = (0,0); // For cursor to top and bottom of print, respectively
 
+  // And if we are to return
+  let mut ret = false; // Flag when ready to return
+
+  // Then input specific variables
+  let mut partial = String::with_capacity(4); // To store partial chars
+
+  // and finally movement specific
+   // If we move via up/down to a line shorter than our current chindex that prior chindex is saved
+   // here, so we can go to that prior chindex if next operation is up/down. Else it's cleared.
+  let mut goal_chindex = None;
+
   // loop getting input events, ignoring those we can't handle.
-  while !ret {
-    match crossterm::event::read()? {
-      Event::Mouse(_) => (),
-      Event::Resize(x, y) => {
-        state.term_size = (x as usize, y as usize);
-      },
-      // Match the code. Then check for modifiers separately for each key?
-      Event::Key(key) => match (key.code, key.modifiers) {
+  while !ret { match crossterm::event::read()? {
+    // If resize event, just update usize
+    Event::Resize(x, y) => { state.term_size = (x as usize, y as usize); },
+
+    // Ignore mouse events
+    Event::Mouse(_) => (),
+
+    // If key event, match code and modifiers and handle thereafter
+    Event::Key(key) => {
+      // Check if any of the state variables should be cleared
+      // Done here instead of in all but 2 key-handlers
+
+      // If doing anything but continued input of partial character, clear it
+      match key.code {
+        KeyCode::Char(_) => (),
+        _ => { partial.clear(); },
+      }
+
+      // If doing anything but moving up/down, clear goal_chindex
+      if key.code != KeyCode::Up && key.code != KeyCode::Down {
+        goal_chindex = None;
+      }
+
+      match (key.code, key.modifiers) {
+
+        // Start with true input; characters and deletions
         (KeyCode::Char(ch), KeyModifiers::SHIFT) | (KeyCode::Char(ch), KeyModifiers::NONE) => {
           partial.push(ch);
           // If the partial is now complete, put it in the buffer
@@ -69,37 +87,8 @@ pub fn get_input(state: &mut crate::State)
             buffer[lindex].insert(tmp, partial.remove(0));
           }
         },
-        (KeyCode::Left, KeyModifiers::NONE) => {
-          partial.clear();
-          if chindex == 0 {
-            // Go to previous line
-            if lindex > 0 {
-              lindex -= 1;
-              chindex = buffer[lindex].len() - 1;
-            }
-          }
-          else {
-            chindex = rfind_boundary(&buffer[lindex], chindex);
-          }
-        },
-        (KeyCode::Right, KeyModifiers::NONE) => {
-          partial.clear();
-          if chindex == buffer[lindex].len() - 1 {
-            // Go to next line
-            if buffer.len() - 1 > lindex {
-              lindex += 1;
-              chindex = 0;
-            }
-          }
-          else {
-            chindex = find_boundary(
-              &buffer[lindex][.. buffer[lindex].len() - 1],
-              chindex
-            );
-          }
-        },
+
         (KeyCode::Backspace, KeyModifiers::NONE) | (KeyCode::Char('h'), KeyModifiers::CONTROL) => {
-          partial.clear();
           if chindex == 0 {
             // Join this and preceeding line
             if lindex != 0 {
@@ -117,8 +106,25 @@ pub fn get_input(state: &mut crate::State)
             buffer[lindex].remove(chindex);
           }
         },
+
+        (KeyCode::Delete, KeyModifiers::NONE) => {
+          if chindex >= buffer[lindex].len() - 1 {
+            // Join this and following line
+            // But only if there is a following line
+            if lindex != buffer.len() - 1 {
+              // Remove our newline and append next line
+              buffer[lindex].pop();
+              let tmp = buffer.remove(lindex + 1);
+              buffer[lindex].push_str(&tmp);
+            }
+          }
+          else {
+            // Just delete following character
+            buffer[lindex].remove(chindex);
+          }
+        },
+
         (KeyCode::Enter, KeyModifiers::NONE) => {
-          partial.clear();
           // Insert the newline
           buffer[lindex].insert(chindex, '\n');
           chindex += 1;
@@ -141,23 +147,78 @@ pub fn get_input(state: &mut crate::State)
             chindex = 0;
           }
         }
+
+        // Then we have movement; right/left, up/down, home/end
+        (KeyCode::Right, KeyModifiers::NONE) => {
+          if chindex == buffer[lindex].len() - 1 {
+            // Go to next line
+            if buffer.len() - 1 > lindex {
+              lindex += 1;
+              chindex = 0;
+            }
+          }
+          else {
+            chindex = find_boundary(
+              &buffer[lindex][.. buffer[lindex].len() - 1],
+              chindex
+            );
+          }
+        },
+
+        (KeyCode::Left, KeyModifiers::NONE) => {
+          if chindex == 0 {
+            // Go to previous line
+            if lindex > 0 {
+              lindex -= 1;
+              chindex = buffer[lindex].len() - 1;
+            }
+          }
+          else {
+            chindex = rfind_boundary(&buffer[lindex], chindex);
+          }
+        },
+
+        (KeyCode::Up, KeyModifiers::NONE) | (KeyCode::Down, KeyModifiers::NONE) => {
+          // First move to the indicated line, if possible
+          match key.code {
+            KeyCode::Up => { lindex = lindex.saturating_sub(1); },
+            KeyCode::Down => { if lindex < buffer.len() - 1 { lindex += 1; } },
+            _ => (),
+          }
+          // Then try to go to goal_chindex and place chindex within the new line
+          match goal_chindex {
+            Some(tmp) => { chindex = tmp; },
+            None => (),
+          }
+          // If current chindex is too big, save it as goal and go to nearest valid chindex
+          if chindex >= buffer[lindex].len() {
+            goal_chindex = Some(chindex);
+            chindex = buffer[lindex].len() - 1;
+          }
+        },
+
+        (KeyCode::Home, KeyModifiers::NONE) => {
+          lindex = 0;
+          chindex = 0;
+        },
+
+        (KeyCode::End, KeyModifiers::NONE) => {
+          lindex = buffer.len() - 1;
+          chindex = buffer[lindex].len() - 1;
+        },
+
         _ => (), // Ignore unknown codes
-      }
-    }
-    // Then we print
-    dists = crate::ui::print::print_input(state, &mut out, &buffer, lindex, chindex, dists.0)?;
-  }
+      } // End of matching key-codes and modifiers
+
+      // Then we print
+      dists = crate::ui::print::print_input(state, &mut out, &buffer, lindex, chindex, dists.0)?;
+    } // End of Key input event matching
+
+  }} // End of while and event match
+
   // Just to not overwrite the last entered line, move down and to column 0
   out.queue(crossterm::cursor::MoveToColumn(0))?;
   out.queue(crossterm::cursor::MoveDown(dists.1 + 1))?;
   // Then return
   Ok(buffer)
-}
-
-// The core UI loop, handles events and runs the resulting commands on newlines
-pub fn core_loop(state: &mut crate::State) -> Result<(), &'static str> {
-  // All relevant data is stored in the State struct, so just get looping
-  loop {
-
-  }
 }
