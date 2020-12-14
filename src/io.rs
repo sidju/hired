@@ -1,5 +1,6 @@
 /// IO abstractions
 
+/*
 pub fn read_command(state: &mut crate::State, command: &mut String) {
     // Clear the line, since read_line appends
     command.clear();
@@ -28,13 +29,11 @@ pub fn read_command(state: &mut crate::State, command: &mut String) {
         }
     }
 }
+*/
+
 pub fn read_insert(state: &mut crate::State) -> Vec<String>
 {
-  crossterm::terminal::enable_raw_mode().unwrap();
-  let ret = crate::ui::get_input(state).unwrap();
-  crossterm::terminal::disable_raw_mode().unwrap();
-
-  ret
+  crate::ui::get_input(state).unwrap()
 
 /*
     // Create a variable to save the inserted text into

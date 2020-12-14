@@ -2,7 +2,7 @@
 use crate::State;
 
 use crossterm::{QueueableCommand, ErrorKind, style::Print};
-use std::io::{Write, stdout};
+use std::io::Write;
 
 // Start with the printing helpers
 
@@ -88,27 +88,29 @@ fn print_separator(out: &mut impl Write, width: usize)
     sep.push('─');
   }
   sep.push('\n');
+  sep.push('\r');
   // Print the generated separator
   out.queue(Print(sep))?;
   Ok(())
 }
 
-// Appends blankspaces to pad from given index to given width
-fn pad_line(out: &mut impl Write, width: usize, index: usize)
-  -> Result<(), ErrorKind>
-{
-  // Get the position the index represents
-  let pos = index % width;
-  // Check if we really need to pad or if index is 0
-  if pos != 0 {
-    let mut pad = String::with_capacity(2 + width - pos);
-    for _ in pos .. width {
-      pad.push(' ');
-    }
-    out.queue(Print(pad))?;
-  }
-  Ok(())
-}
+//// Appends blankspaces to pad from given index to given width
+//fn pad_line(out: &mut impl Write, width: usize, index: usize)
+//  -> Result<(), ErrorKind>
+//{
+//  // Get the position the index represents
+//  let pos = index % width;
+//  // Check if we really need to pad or if index is 0
+//  if pos != 0 {
+//    let mut pad = String::with_capacity(2 + width - pos);
+//    for _ in pos .. width {
+//      pad.push(' ');
+//    }
+//    out.queue(Print(pad))?;
+//  }
+//  Ok(())
+//}
+
 // Wrapper that adjusts the error type (loosing some data, though)
 pub fn format_print(
   state: &State,
@@ -142,7 +144,7 @@ fn format_print_internal(
   let mut highlighter = syntect::easy::HighlightLines::new(syntax, theme);
 
   // Create a connection to the terminal, that we print through
-  let mut out = stdout();
+  let mut out = &state.stdout;
 
   // Track lines printed, to break when we have printed the terminal height
   let mut lines_printed = 0;
@@ -193,10 +195,10 @@ fn format_print_internal(
         match ch {
           '\n' => {
             // If literal mode, also print $
-            if l { out.queue(Print('$'))?; i += 1; }
+            if l { out.queue(Print('$'))?; /* i += 1; */ }
             // This primarily means we reset i, since a new line is created
             // but that requires the following cleanup
-            pad_line(&mut out, state.term_size.0, i);
+            //pad_line(&mut out, state.term_size.0, i);
             i = 0;
           },
           '$' => if l {
@@ -214,7 +216,7 @@ fn format_print_internal(
 
         // Then we check if we need to move to a new line
         if i % state.term_size.0 == 0 {
-          out.queue(Print('\n'))?;
+          out.queue(Print("\n\r"))?;
 
           // So we increment lines printed and check if done
           lines_printed += 1;
