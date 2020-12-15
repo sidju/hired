@@ -73,7 +73,10 @@ fn event_input(state: &mut crate::State, one_line: bool)
       }
 
       // If doing anything but moving up/down, clear goal_chindex
-      if key.code != KeyCode::Up && key.code != KeyCode::Down {
+      if (key.code != KeyCode::Up &&
+         key.code != KeyCode::Down ) ||
+         key.modifiers != KeyModifiers::NONE
+      {
         goal_chindex = None;
       }
 
@@ -225,9 +228,11 @@ fn event_input(state: &mut crate::State, one_line: bool)
 
   }} // End of while and event match
 
-  // Just to not overwrite the last entered line, move down and to column 0
-  out.queue(crossterm::cursor::MoveToColumn(0))?;
-  out.queue(crossterm::cursor::MoveDown(dists.1 + 1))?;
+  // To not overwrite any of our buffer, go to bottom an move to next line
+  if dists.1 > 0 {
+    out.queue(crossterm::cursor::MoveDown(dists.1))?;
+  }
+  out.queue(crossterm::style::Print("\n\r"))?;
   // Then flush and return
   out.flush()?;
   Ok(buffer)
