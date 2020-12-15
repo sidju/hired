@@ -2,7 +2,7 @@
 use crate::State;
 
 use crossterm::{QueueableCommand, ErrorKind, style::Print};
-use std::io::{Write, stdout};
+use std::io::Write;
 
 // Start with the printing helpers
 
@@ -88,27 +88,29 @@ fn print_separator(out: &mut impl Write, width: usize)
     sep.push('─');
   }
   sep.push('\n');
+  sep.push('\r');
   // Print the generated separator
   out.queue(Print(sep))?;
   Ok(())
 }
 
-// Appends blankspaces to pad from given index to given width
-fn pad_line(out: &mut impl Write, width: usize, index: usize)
-  -> Result<(), ErrorKind>
-{
-  // Get the position the index represents
-  let pos = index % width;
-  // Check if we really need to pad or if index is 0
-  if pos != 0 {
-    let mut pad = String::with_capacity(2 + width - pos);
-    for _ in pos .. width + 1 {
-      pad.push(' ');
-    }
-    out.queue(Print(pad))?;
-  }
-  Ok(())
-}
+//// Appends blankspaces to pad from given index to given width
+//fn pad_line(out: &mut impl Write, width: usize, index: usize)
+//  -> Result<(), ErrorKind>
+//{
+//  // Get the position the index represents
+//  let pos = index % width;
+//  // Check if we really need to pad or if index is 0
+//  if pos != 0 {
+//    let mut pad = String::with_capacity(2 + width - pos);
+//    for _ in pos .. width {
+//      pad.push(' ');
+//    }
+//    out.queue(Print(pad))?;
+//  }
+//  Ok(())
+//}
+
 // Wrapper that adjusts the error type (loosing some data, though)
 pub fn format_print(
   state: &State,
@@ -142,11 +144,10 @@ fn format_print_internal(
   let mut highlighter = syntect::easy::HighlightLines::new(syntax, theme);
 
   // Create a connection to the terminal, that we print through
-  let mut out = stdout();
+  let mut out = &state.stdout;
 
   // Track lines printed, to break when we have printed the terminal height
   let mut lines_printed = 0;
-
   // Count characters printed, for wrapping. Use 'i' since everything uses it
   let mut i = 0;
 
@@ -155,79 +156,163 @@ fn format_print_internal(
   // PR's welcome
   'lines: for line in text {
     // To handle wrapping, print character by character
-    
-    // Pad the lines with blankspace to set bg color
-    pad_line(&mut out, state.term_size.0, i)?;
-    // And separate with a newline
-    out.queue(Print('\n'))?;
-
-    // Then we can clear i
-    i = 0;
 
     // Highlight the text.
     let highlighted = highlighter.highlight(line, &state.syntax_lib);
 
     // Iterate over the segments, setting style before each
     for (style, text) in highlighted {
-      // Check the style and apply it using Crossterm
       apply_style(style, &mut out)?;
 
       for ch in text.chars() {
-        // If i is divisible by terminal width this is a new line
-        if i % state.term_size.0 == 0 {
 
-          // If i isn't 0 it is a wrapped line, so we need to split it
-          if i != 0 { out.queue(Print('\n'))?; }
+        // Print line numbers, if active
+        if n && (i % state.term_size.0 == 0) {
+          // To not colour our numbering we reset styling for this
+          reset_style(&mut out)?;
 
-          lines_printed += 1;
+          // Then we convert our 0-indexed int to a 1 indexed string
+          let tmp_num = (line_nr + 1).to_string();
+          let tmp_num_len = tmp_num.len();
 
-          // Break if we have printed the height of the view window - 2
-          // But only if we are printing as a view
-          if lines_printed + 1 >= state.term_size.1 && as_view { break 'lines; }
-
-          // If we are printing line numbers
-          if n {
-            // To not colour our line numbers we reset styling here.
-            // Can be changed to theme the line numbers
-            reset_style(&mut out)?;
-            // convert the internal 0-indexed integer to a 1-indexed number string
-            let tmp_num = (line_nr + 1).to_string();
-            let tmp_num_len = tmp_num.len();
-            // If this is the first line of the internal line, print the line number
-            if i == 0 {
-              out.queue(Print(tmp_num))?;
-              line_nr += 1;
-            }
-            // Else print padding to keep the edge even
-            else {
-              for _ in 0 .. tmp_num.len() { out.queue(Print(' '))?; }
-            }
-            out.queue(Print('│'))?;
-            i += tmp_num_len + 1; // Mark that we added some chars to the line
-            // Restore the styling
-            apply_style(style, &mut out)?;
+          // If this is a new text line, print line number
+          if i == 0 {
+            out.queue(Print(tmp_num))?;
+            line_nr += 1;
           }
+          // If only a new terminal line, print a neat border
+          else {
+            for _ in 0 .. tmp_num_len { out.queue(Print(' '))?; }
+          }
+          // Print the separator and mark that we added chars to the line
+          out.queue(Print('│'))?;
+          i += tmp_num_len + 1;
+          // And finally restore the styling
+          apply_style(style, &mut out)?;
         }
-        // No matter line changes and all that, look at the actual char
+
+        // Next we print the character in question
         match ch {
-          // Special handling for 'l' printing mode
-          // we don't print '\n', since we must trust the buffer in them only occuring
-          // at ends of lines (where i == 0, so we print '\n' anyways)
-          '\n' => if l { out.queue(Print('$'))?; },
-          '$' => if l { out.queue(Print("\\$"))?; i += 1;} else { out.queue(Print('$'))?; },
-          c => { out.queue(Print(c))?; },
+          '\n' => {
+            // If literal mode, also print $
+            if l { out.queue(Print('$'))?; /* i += 1; */ }
+            // This primarily means we reset i, since a new line is created
+            // but that requires the following cleanup
+            //pad_line(&mut out, state.term_size.0, i);
+            i = 0;
+          },
+          '$' => if l {
+            out.queue(Print("\\$"))?;
+            i += 2;
+          } else {
+            out.queue(Print('$'))?;
+            i += 1;
+          },
+          c => {
+            out.queue(Print(c))?;
+            i += 1;
+          },
         }
-        // Increment number of chars printed. Not techically correct if it was '\n'
-        // but that should be end of line, which means i is never looked at again
-        i += 1;
+
+        // Then we check if we need to move to a new line
+        if i % state.term_size.0 == 0 {
+          out.queue(Print("\n\r"))?;
+
+          // So we increment lines printed and check if done
+          lines_printed += 1;
+          if as_view && lines_printed + 2 >= state.term_size.1 {break 'lines;}
+        }
       }
     }
   }
   // Pad and terminate the last line
-  pad_line(&mut out, state.term_size.0, i)?;
   reset_style(&mut out)?;
   print_separator(&mut out, state.term_size.0)?;
   // Finally we flush the buffer, to make sure we actually have printed everything
   out.flush()?;
   Ok(())
+}
+
+// A print function that prints the current state of the buffer over the previous state
+// Moves the cursor to the given position after printing
+// Moves 'topdist' lines up before starting printing
+// Returns cursor's distance to top and bottom, respectively
+pub fn print_input(state: &mut crate::State, out: &mut impl Write, buffer: &Vec<String>, lindex: usize, chindex: usize, topdist: u16)
+  -> Result<(u16, u16), crossterm::ErrorKind>
+{
+  // First go to the top of the previous input
+  if topdist != 0 {
+    out.queue(crossterm::cursor::MoveUp(topdist))?;
+  }
+  out.queue(crossterm::cursor::MoveToColumn(0))?;
+  // And clear all of the previous print
+  out.queue(crossterm::terminal::Clear(crossterm::terminal::ClearType::FromCursorDown))?;
+
+  // A bool to track if we have passed our current cursor index, to find its position
+  let mut passed = false;
+
+  // To track the position of the cursor, by when we passed it in the buffer
+  let mut x: u16 = 0;
+  let mut y: u16 = 0;
+  // And the height of the print, for returning distance to top and bottom
+  let mut height: u16 = 0;
+
+  // Then start looping over the buffer
+  for (linenr, line) in buffer.iter().enumerate() {
+
+    // Create a character to track nr characters printed this line
+    let mut chars_printed = 0;
+
+    // If this isn't the first line, newline and carriage retun
+    if linenr != 0 {
+      out.queue(Print("\n\r"))?;
+      // And incement height and maybe y
+      height += 1;
+      if passed { y += 1; }
+    }
+
+    for (i, ch) in line.char_indices() {
+      // If we haven't reached our current cursor position before, check if we have now.
+      // This by nesting if not found, if lindex == line_i, if chindex == i
+      if ! passed {
+        if lindex <= linenr && chindex <= i {
+          // Set the x coordinate using chars_printed modulo terminal width
+          x = (chars_printed % state.term_size.0) as u16;
+          // And mark chindex as passed
+          passed = true;
+        }
+      }
+    
+      // Ignore characters that are newlines (since they confuse our wrapping and are handled by the end of line)
+      if ch != '\n' && ch != '\r' {
+        // If our current x position is 0 in modulo of the terminal width
+        // we are about to go out the side of the terminal
+        if chars_printed + 1 % state.term_size.0 == 0 {
+          // Print newline and carriage return
+          out.queue(Print("\n\r"))?;
+          // Increment the height of this print
+          height += 1;
+          // If the cursor is marked as found/passed, increment cursor height as well
+          if passed { y += 1; }
+        }
+    
+        // TODO: Handle printing weird characters with other widths than 1
+
+        // Increment the number of characters printed
+        chars_printed += 1;
+        // Finally, print the character
+        out.queue(Print(ch))?;
+      }
+    } // End of chars
+  } // End of lines
+
+  // When done with looping, move the cursor to the calculated coordinates
+  out.queue(crossterm::cursor::MoveToColumn(x + 1))?;
+  if y != 0 {
+    out.queue(crossterm::cursor::MoveUp(y))?;
+  }
+  out.flush()?;
+
+  // Finally we return the distances
+  Ok((height - y, y))
 }

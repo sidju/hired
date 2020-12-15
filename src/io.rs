@@ -1,5 +1,6 @@
 /// IO abstractions
 
+/*
 pub fn read_command(state: &mut crate::State, command: &mut String) {
     // Clear the line, since read_line appends
     command.clear();
@@ -28,8 +29,13 @@ pub fn read_command(state: &mut crate::State, command: &mut String) {
         }
     }
 }
-pub fn read_insert(state: &crate::State) -> Vec<String>
+*/
+
+pub fn read_insert(state: &mut crate::State) -> Vec<String>
 {
+  crate::ui::get_input(state).unwrap()
+
+/*
     // Create a variable to save the inserted text into
     let mut insert = Vec::new();
     // Loop until the insert is ended by a lone dot
@@ -61,4 +67,5 @@ pub fn read_insert(state: &crate::State) -> Vec<String>
     }
     // Finally return the collected lines
     insert
+*/
 }

@@ -157,7 +157,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       // Basic editing commands
       'a' => {
         // Get the input
-        let mut input = io::read_insert(&state);
+        let mut input = io::read_insert(state);
         // Calculate the selection
         let index = interpret_selection(selection, state.selection, state.buffer.len(), false).1;
         let end = index + input.len();
@@ -169,7 +169,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       }
       'i' => {
         // Get the input
-        let mut input = io::read_insert(&state);
+        let mut input = io::read_insert(state);
         // Calculate the selection
         let index = interpret_selection(selection, state.selection, state.buffer.len(), false).0;
         let end = index + input.len();
@@ -181,7 +181,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       }
       'c' => {
         // Get the input
-        let mut input = io::read_insert(&state);
+        let mut input = io::read_insert(state);
         // Calculate the selection
         let selection = interpret_selection(selection, state.selection, state.buffer.len(), false);
         let end = selection.0 + input.len();
