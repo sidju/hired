@@ -1,0 +1,20 @@
+To do:
+# Small fixes
+- Look over raw mode handling for error printing.
+
+- Fix the movement variations in 'm' and 't' commands
+
+- Fix so that regex is configured for multiline etc.
+
+- Add some escape sequences to our input (\n most importantly, thus also \\).
+
+- Check our flag handling, allow no invalid flags!
+
+- Validate selection even when no command given, currently sets that selection even though error results.
+
+- Handle any combination of \r and \n to mark newlines, (aka. DOS and mac text encoding)
+
+# Printing fixes
+- Unify printing logic into one function. (Later branch)
+
+- Make printing handle tab.
