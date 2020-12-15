@@ -33,7 +33,7 @@ pub fn parse_index(index: &str)
       _ => { match index.chars().next() {
         Some('-')|Some('+') => index[..].parse::<i32>().map(|x| Ind::Relative(x) ),
         _ => index.parse::<usize>().map(|x| Ind::Literal(x) ),
-      }.map_err(|_| INDEX_PARSE_ERR)},
+      }.map_err(|_| INDEX_PARSE)},
     }
   }
 }
@@ -48,7 +48,7 @@ pub fn parse_selection(input: &str)
   for (i, char) in input.char_indices() {
     // Find the separator, if any
     if char == ',' || char == ';' {
-      if sep_i != None { return Err(INDEX_PARSE_ERR); } // Multiple separators given
+      if sep_i != None { return Err(INDEX_PARSE); } // Multiple separators given
       // Save index and which separator it is
       sep_i = Some((i, char));
     }
@@ -80,7 +80,7 @@ pub fn parse_selection(input: &str)
       return Ok((i, sel));
     }
   }
-  Err(NO_COMMAND_ERR)
+  Err(NO_COMMAND)
 }
 
 pub fn u_i_add(a: usize, b: i32)

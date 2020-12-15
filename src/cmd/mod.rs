@@ -109,7 +109,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
           // Get the path (cutting of the command char and the trailing newline)
           let path = parse_path(clean).unwrap_or(&state.file);
           // Read the data from the file
-          let mut data = crate::file::read_file(path)?;
+          let mut data = crate::file::read_file(path, ch == 'r')?;
           let datalen = data.len();
           // Empty the buffer if not 'r'
           if ch != 'r' {
