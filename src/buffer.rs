@@ -69,8 +69,6 @@ impl Buffer for VecBuffer
       self.saved = false;
       //0 is valid but needs to be specially handled
       //if index != 0 { index -= 1; }
-      #[cfg(feature = "debug")] // Debug printouts if debug flag
-      { println!("inserting at index {}", index); }
       // To minimise time complexity we split the vector immediately
       let mut tail = self.buffer.split_off(index);
       // And then append both the insert and the split off part
@@ -79,7 +77,6 @@ impl Buffer for VecBuffer
       Ok(())
     }
     else {
-      println!("Buffer len is: {} and index is: {}", self.buffer.len(), index);
       Err("Invalid selection.")
     }
   }
@@ -94,17 +91,15 @@ impl Buffer for VecBuffer
       Ok(())
     }
     else {
-      #[cfg(feature = "debug")]
-      {
-        println!("The selection was {:?}", selection);
-        if selection.0 >= selection.1 {
-          println!("The selection is empty or inverted");
-        }
-        if selection.1 > self.buffer.len() {
-          println!("The selection overshoots the buffer.");
-        }
+      if selection.0 >= selection.1 {
+        Err("Selection empty or inverted")
       }
-      Err("Invalid selection.")
+      else if selection.1 > self.buffer.len() {
+        Err("Selection overshoots the buffer")
+      }
+      else {
+        Err("Invalid selection.")
+      }
     }
   }
   fn change(&mut self, data: &mut Vec<String>, selection: (usize, usize)) -> Result<(), &'static str>
@@ -119,23 +114,12 @@ impl Buffer for VecBuffer
       Ok(())
     }
     else {
-      #[cfg(feature = "debug")]
-      {
-        println!("The selection was {:?}", selection);
-        if selection.0 >= selection.1 {
-          println!("The selection is empty or inverted");
-        }
-        if selection.1 > self.buffer.len() {
-          println!("The selection overshoots the buffer.");
-        }
-      }
       Err("Invalid selection.")
     }
   }
   fn mov(&mut self, selection: (usize, usize), mut index: usize) -> Result<(), &'static str> {
     self.verify_selection(selection)?;
     self.verify_index(index)?;
-    //println!("index: {}, selection: {},{}", index, selection.0, selection.1);
     //0 is valid but needs to be specially handled
     if index != 0 { index -= 1; }
     if index < selection.0 {
@@ -172,8 +156,14 @@ impl Buffer for VecBuffer
     for line in &self.buffer[selection.0 .. selection.1] {
       data.push(line.clone());
     }
-    // Insert it
-    let mut tail = self.buffer.split_off(index);
+    // Insert it, subtract one if copying to before selection
+    let i = if index <= selection.0 {
+      index.saturating_sub(1)
+    }
+    else {
+      index
+    };
+    let mut tail = self.buffer.split_off(i);
     self.buffer.append(&mut data);
     self.buffer.append(&mut tail);
     Ok(())
@@ -251,16 +241,6 @@ impl Buffer for VecBuffer
       Ok(selection_after)
     }
     else {
-      #[cfg(feature = "debug")]
-      {
-        println!("The selection was {:?}", selection);
-        if selection.0 >= selection.1 {
-          println!("The selection is empty or inverted");
-        }
-        if selection.1 > self.buffer.len() {
-          println!("The selection overshoots the buffer.");
-        }
-      }
       Err("Invalid selection.")
     }
   }

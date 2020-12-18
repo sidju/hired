@@ -1,5 +1,5 @@
 use crate::error_consts::*;
-use crate::io;
+use crate::ui;
 
 use crate::buffer::Buffer;
 
@@ -20,11 +20,13 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
   let mut p = false;
   let mut n = false;
   let mut l = false;
+  // And a bool to say if view has any reason to be reprinted
+  let mut view_changed = false;
 
   // Parse out the command index and the selection
   let (cmd_i, selection) = parse_selection(command)?;
 
-  // Use the cmd_i to get a clean selection
+  // Use the cmd_i to get a clean selection  
   let clean = &command[cmd_i + 1..].trim();
 
   // Match the command and act upon it
@@ -34,6 +36,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       // Get and update the selection.
       let sel = interpret_selection(selection, state.selection, state.buffer.len(), false);
       state.selection = Some(sel);
+      view_changed = true; // Set to reprint
       Ok(())
     },
     Some(ch) => match ch {
@@ -56,12 +59,12 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       // Help commands
       '?' => {
         if selection != Sel::Lone(Ind::Default) { return Err(SELECTION_FORBIDDEN); }
-        println!("{}", HELP_TEXT);
+        ui::print(&mut state.stdout, HELP_TEXT);
         Ok(())
       },
       'h' => {
         if selection != Sel::Lone(Ind::Default) { return Err(SELECTION_FORBIDDEN); }
-        println!("{:?}", state.error);
+        ui::print(&mut state.stdout, state.error.unwrap_or(NO_ERROR));
         Ok(())
       },
       'H' => {
@@ -75,10 +78,10 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
         match parse_path(clean) {
           None => { // Print current filename
             if state.file.len() == 0 {
-              println!("No file set.");
+              ui::print(&mut state.stdout, "No file set.\n\r");
             }
             else {
-              println!("Current file is: {}", state.file);
+              ui::println(&mut state.stdout, &state.file);
             }
           },
           Some(x) => { // Set new filename
@@ -141,7 +144,6 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
         Ok(())
       }
       // Print commands
-      // TODO: change this to an update of selection and always check for print flags
       'p' | 'n' | 'l' => {
         // Get and update the selection.
         let sel = interpret_selection(selection, state.selection, state.buffer.len(), false);
@@ -157,7 +159,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       // Basic editing commands
       'a' => {
         // Get the input
-        let mut input = io::read_insert(state);
+        let mut input = ui::get_input(state)?;
         // Calculate the selection
         let index = interpret_selection(selection, state.selection, state.buffer.len(), false).1;
         let end = index + input.len();
@@ -165,11 +167,12 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
         state.buffer.insert(&mut input, index)?;
         // Update the selection
         state.selection = Some((index, end));
+        view_changed = true;
         Ok(())
       }
       'i' => {
         // Get the input
-        let mut input = io::read_insert(state);
+        let mut input = ui::get_input(state)?;
         // Calculate the selection
         let index = interpret_selection(selection, state.selection, state.buffer.len(), false).0;
         let end = index + input.len();
@@ -177,11 +180,12 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
         state.buffer.insert(&mut input, index)?;
         // Update the selection
         state.selection = Some((index, end));
+        view_changed = true;
         Ok(())
       }
       'c' => {
         // Get the input
-        let mut input = io::read_insert(state);
+        let mut input = ui::get_input(state)?;
         // Calculate the selection
         let selection = interpret_selection(selection, state.selection, state.buffer.len(), false);
         let end = selection.0 + input.len();
@@ -189,6 +193,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
         state.buffer.change(&mut input, selection)?;
         // Update the selection
         state.selection = Some((selection.0, end));
+        view_changed = true;
         Ok(())
       }
       'd' => {
@@ -208,6 +213,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
         else {
           state.selection = None;
         }
+        view_changed = true;
         Ok(())
       }
       // Advanced editing commands
@@ -237,6 +243,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
         }
         // Update the selection
         state.selection = Some((index, end));
+        view_changed = true;
         Ok(())
       }
       'j' => {
@@ -246,6 +253,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
         state.buffer.join(selection)?;
         // Update the selection
         state.selection = Some((selection.0, selection.0 + 1)); // Guaranteed to exist, but may be wrong.
+        view_changed = true;
         Ok(())
       }    
       // Regex commands
@@ -268,6 +276,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
         }
         else { // implies 'g'
         }
+        view_changed = true;
         Ok(())
       }
       _cmd => {
@@ -289,7 +298,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
     }
   }
   // Othewise, print the height of the terminal -2 lines from start of the selection - 5 or so
-  else {
+  else if view_changed {
     if let Some(sel) = state.selection {
       // Handle the cases where we would go out of index bounds
       let start = sel.0.saturating_sub(5);

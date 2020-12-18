@@ -1,8 +1,20 @@
 /// UI printing abstractions
 use crate::State;
+use crate::error_consts::*;
 
 use crossterm::{QueueableCommand, ErrorKind, style::Print};
 use std::io::Write;
+
+// A small println replacement for raw mode. Uses crossterm print commands and the state's stdout.
+pub fn println(out: &mut impl Write, text: &str) {
+  out.queue(Print(text)).expect(TERMINAL_WRITE);
+  out.queue(Print("\n\r")).expect(TERMINAL_WRITE);
+  out.flush().expect(TERMINAL_WRITE);
+}
+pub fn print(out: &mut impl Write, text: &str) {
+  out.queue(Print(text)).expect(TERMINAL_WRITE);
+  out.flush().expect(TERMINAL_WRITE);
+}
 
 // Start with the printing helpers
 
@@ -296,8 +308,6 @@ pub fn print_input(state: &mut crate::State, out: &mut impl Write, buffer: &Vec<
           if passed { y += 1; }
         }
     
-        // TODO: Handle printing weird characters with other widths than 1
-
         // Increment the number of characters printed
         chars_printed += 1;
         // Finally, print the character

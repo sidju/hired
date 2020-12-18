@@ -11,7 +11,6 @@ use syntect::highlighting::Theme;
 pub mod error_consts;
 use error_consts::*;
 
-mod io;
 mod cmd;
 mod buffer;
 mod file;
@@ -74,7 +73,7 @@ impl State {
 
 fn main() {
   println!("Welcome to hired. Ed with highlighting written in rust.");
-  //println!("For assistance, enter '?'.");
+  println!("For assistance, enter '?'.");
 
   // Init state
   let mut state = State::new();

@@ -1,41 +1,39 @@
-To do:
-# Small fixes
- # widespread small
-- Look over raw mode handling for error printing.
- - Requires updating or removing our debug printouts.
-
-- Look over all TODO comments in the repo.
-
+#To do:
 
  # In cmd/mod.rs
-- Fix the movement variations in 'm' and 't' commands
-
 - Check our flag handling, allow no invalid flags!
 
-- Validate selection even when no command given, currently sets that selection even though error results.
+- Validate the selection when interpreting it, currently no command can set invalid selection.
 
 - Look over which commands to print view after.
-
-+ Allow opening a non-existent file for editing, but not appending it to current buffer.
 
 - Return error if fail to parse filepath for 'e', 'E', 'r'?
 
 
  # In buffer.rs
-- Convert into using error_consts.rs, so that error printing in raw mode works.
+- Improve error detail and use error_consts.
 
 - Fix so that regex is configured for multiline etc.
 
 - Handle any combination of \r and \n to mark newlines, (aka. DOS and mac text encoding)
 
 
+
+# Do in UI fixup branch?
  # in ui/input.rs?
 - Add some escape sequences to our input (\n most importantly, thus also \\).
 
+- Have some way to go back in command history (up-arrow in command input).
 
 # Printing fixes
+- Make view closer to centered on selection?
+
+- Skip newline before first printed line.
+
+- Add separator before printout.
+
+- Reduce goal view-size, so that preceeding command is visible?
+
 - Unify printing logic into one function. (Later branch)
 
 - Make printing handle tab.
-
-- Update printing from 'f' command for raw mode.
