@@ -48,9 +48,11 @@ pub const UNDEFINED_FLAG: &str = "Unknown flag entered.\n\r";
 pub const DUPLICATE_FLAG: &str = "A flag was entered twice.\n\r";
 
 // Buffer command errors
+pub const BUFFER_NOT_IMPLEMENTED: &str = "Feature not implemented in buffer.\n\r";
 pub const INDEX_TOO_BIG: &str = "Selection overshoots buffer length.\n\r";
 pub const SELECTION_EMPTY: &str = "Selection empty or inverted.\n\r";
 pub const MOVE_INTO_SELF: &str = "Cannot move selection into itself.\n\r";
+pub const INVALID_REGEX: &str = "Invalid regex entered.\n\r";
 
 // File interaction errors
 pub const PERMISSION_DENIED: &str = "Could not open file. Permission denied.\n\r";
