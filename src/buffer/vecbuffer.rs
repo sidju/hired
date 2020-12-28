@@ -16,6 +16,14 @@ impl VecBuffer {
 }
 impl Buffer for VecBuffer {
 
+  fn set_saved(&mut self) {
+    self.saved = true;
+  }
+
+  fn saved(&self) -> bool {
+    self.saved
+  }
+
   fn len(&self) -> usize {
       self.buffer.len()
   }
@@ -37,14 +45,6 @@ impl Buffer for VecBuffer {
       return Err(INDEX_TOO_BIG);
     }
     Ok(())
-  }
-
-  fn set_saved(&mut self) {
-    self.saved = true;
-  }
-
-  fn saved(&self) -> bool {
-    self.saved
   }
 
   fn get_selection(&self, selection: (usize, usize)) -> Result<&[String], &'static str> {
@@ -231,4 +231,106 @@ impl Buffer for VecBuffer {
   {
     Err(BUFFER_NOT_IMPLEMENTED)
   }
+}
+
+// Tests of the trickier cases
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use super::super::Buffer;
+
+  fn create_data() -> Vec<String> {
+    vec![
+      "1".to_string(),
+      "2".to_string(),
+      "3".to_string(),
+      "4".to_string(),
+      "5".to_string(),
+      "6".to_string()
+    ]
+  }
+
+  fn create_buffer() -> VecBuffer {
+    let mut buf = VecBuffer::new();
+    buf.insert(&mut create_data(), 0).unwrap();
+    buf
+  }
+
+  #[test]
+  fn verify_index() {
+    let buffer = create_buffer();
+    assert_eq!(Ok(()), buffer.verify_index(buffer.len()));
+    assert_eq!(Ok(()), buffer.verify_index(0));
+    assert_eq!(Err(INDEX_TOO_BIG), buffer.verify_index(buffer.len() + 1));
+  }
+
+  #[test]
+  fn verify_selection() {
+    let buffer = create_buffer();
+    assert_eq!(Ok(()), buffer.verify_selection((0, buffer.len())));
+    assert_eq!(Err(INDEX_TOO_BIG), buffer.verify_selection((0, buffer.len() + 1)));
+    assert_eq!(Err(SELECTION_EMPTY), buffer.verify_selection((1, 0)));
+  }
+
+  #[test]
+  fn saved() {
+    let mut buffer = VecBuffer::new();
+    assert!(buffer.saved());
+    buffer.insert(&mut vec!["0".to_string()], 0).unwrap();
+    assert!(!buffer.saved());
+    buffer.set_saved();
+    assert!(buffer.saved());
+  }
+
+  #[test]
+  fn get_selection() {
+    let data = create_data();
+    let mut buffer = VecBuffer::new();
+    buffer.insert(&mut data.clone(), 0).unwrap();
+    assert_eq!(
+      buffer.get_selection((0, 2)),
+      Ok(&data[0 .. 2])
+    );
+  }
+
+  #[test]
+  fn insert() {
+    let mut buffer = VecBuffer::new();
+    let data = create_data();
+    buffer.insert(&mut data.clone(), 0).unwrap();
+    assert_eq!(Ok(&data[..]), buffer.get_selection((0, buffer.len())));
+  }
+
+  #[test]
+  fn delete() {
+    let mut buffer = VecBuffer::new();
+    let mut data = create_data();
+    buffer.insert(&mut data.clone(), 0).unwrap();
+    buffer.delete((0,3)).unwrap();
+    let mut tail = data.split_off(3);
+    let _deleted = data.split_off(0);
+    data.append(&mut tail);
+    assert_eq!(
+      Ok(&data[..]),
+      buffer.get_selection((0, buffer.len()))
+    );
+  }
+
+  #[test]
+  fn change() {
+    let mut buffer1 = create_buffer();
+    let mut buffer2 = create_buffer();
+    let data = create_data();
+
+    // Change should be the same as delete and insert
+    // It exists only to allow optimisations
+    buffer1.change(&mut data.clone(), (2,4)).unwrap();
+    buffer2.delete((2,4)).unwrap();
+    buffer2.insert(&mut data.clone(), 2).unwrap();
+    assert_eq!(
+      buffer1.get_selection((0, buffer1.len())).unwrap(),
+      buffer2.get_selection((0, buffer2.len())).unwrap()
+    );
+  }
+
 }

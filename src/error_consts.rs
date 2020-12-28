@@ -32,8 +32,6 @@ pub const HELP_TEXT: &str =
 \r";
 // Pre-command parsing errors
 pub const INDEX_PARSE: &str = "Could not parse given index.\n\r";
-pub const SELECTION_OUT_OF_BOUNDS: &str = "Selection out of bounds.\n\r";
-pub const SELECTION_INVERTED: &str = "Selection is empty or inverted.\n\r";
 pub const NO_COMMAND: &str = "No valid command given.\n\r";
 
 // Command handling errors

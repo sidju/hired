@@ -294,7 +294,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       crate::ui::format_print(state, output, sel.0, false, n, l)?;
     }
     else {
-      Err(SELECTION_INVERTED)?
+      Err(SELECTION_EMPTY)?
     }
   }
   // Othewise, print the height of the terminal -2 lines from start of the selection - 5 or so
