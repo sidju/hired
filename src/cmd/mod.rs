@@ -220,15 +220,17 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       'm' | 't' => {
         // Parse the index to move to
         let index = match parse_index(clean
+          // Shouldn't it trim the start instead?
           .trim_end_matches(|c: char| c.is_ascii_alphabetic() )
         )? {
+          // Shouldn't this exist in some "interpret_index" function instead?
           Ind::Default => state.selection.unwrap_or((0,state.buffer.len())).1,
           Ind::BufferLen => state.buffer.len(),
           Ind::Relative(x) => u_i_add(
             state.selection.map(|s| s.1).unwrap_or(state.buffer.len()),
             x
           ),
-          Ind::Literal(x) => x,
+          Ind::Literal(x) => x.saturating_sub(1),
         };
         // Calculate the selection
         let selection = interpret_selection(selection, state.selection, state.buffer.len(), false);

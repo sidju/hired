@@ -1,5 +1,9 @@
 #To do:
 
+
+ # Somewhere:
+- Create a testing macro for buffer implementations.
+
  # In cmd/mod.rs
 - Check our flag handling, allow no invalid flags!
 
@@ -8,15 +12,6 @@
 - Look over which commands to print view after.
 
 - Return error if fail to parse filepath for 'e', 'E', 'r'?
-
-
- # In buffer.rs
-- Improve error detail and use error_consts.
-
-- Fix so that regex is configured for multiline etc.
-
-- Handle any combination of \r and \n to mark newlines, (aka. DOS and mac text encoding)
-
 
 
 # Do in UI fixup branch?

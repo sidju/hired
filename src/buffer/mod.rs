@@ -69,8 +69,8 @@ pub trait Buffer {
     -> Result<(usize, usize), &'static str>
   ;
 
-  // Find the indices in the selection whose lines match the regex pattern
-  fn find_matching(&self, pattern: &str)
+  /// Return the indices in the selection whose lines contain the regex pattern
+  fn find_matching(&self, pattern: &str, selection: (usize, usize))
     -> Result<Vec<usize>, &'static str>
   ;
 

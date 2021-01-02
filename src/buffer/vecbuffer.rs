@@ -93,7 +93,7 @@ impl Buffer for VecBuffer {
       // split out the relevant parts of the buffer
       let mut tail = self.buffer.split_off(selection.1);
       let mut data = self.buffer.split_off(selection.0);
-      let mut middle = self.buffer.split_off(index.saturating_sub(1));
+      let mut middle = self.buffer.split_off(index);
       // Reassemble
       self.buffer.append(&mut data);
       self.buffer.append(&mut middle);
@@ -102,7 +102,7 @@ impl Buffer for VecBuffer {
     }
     else if index >= selection.1 {
       // split out the relevant parts of the buffer
-      let mut tail = self.buffer.split_off(index);
+      let mut tail = self.buffer.split_off(index + 1);
       let mut middle = self.buffer.split_off(selection.1);
       let mut data = self.buffer.split_off(selection.0);
       // Reassemble
@@ -126,10 +126,10 @@ impl Buffer for VecBuffer {
     }
     // Insert it, subtract one if copying to before selection
     let i = if index <= selection.0 {
-      index.saturating_sub(1)
+      index
     }
     else {
-      index
+      index + 1
     };
     let mut tail = self.buffer.split_off(i);
     self.buffer.append(&mut data);
@@ -226,10 +226,23 @@ impl Buffer for VecBuffer {
     Ok(selection_after)
   }
 
-  fn find_matching(&self, _pattern: &str)
+  fn find_matching(&self, pattern: &str, selection: (usize, usize))
     -> Result<Vec<usize>, &'static str>
   {
-    Err(BUFFER_NOT_IMPLEMENTED)
+    use regex::RegexBuilder;
+    self.verify_selection(selection)?;
+    let regex = RegexBuilder::new(pattern)
+      .multi_line(true)
+      .build()
+      .map_err(|_| INVALID_REGEX)
+    ?;
+    let mut ret = Vec::new();
+    for index in selection.0 .. selection.1 {
+      if regex.is_match(&(self.buffer[index])) {
+        ret.push(index);
+      }
+    }
+    Ok(ret)
   }
 }
 
@@ -241,12 +254,12 @@ mod tests {
 
   fn create_data() -> Vec<String> {
     vec![
-      "1".to_string(),
-      "2".to_string(),
-      "3".to_string(),
-      "4".to_string(),
-      "5".to_string(),
-      "6".to_string()
+      "1\n".to_string(),
+      "2\n".to_string(),
+      "3\n".to_string(),
+      "4\n".to_string(),
+      "5\n".to_string(),
+      "6\n".to_string()
     ]
   }
 
@@ -295,10 +308,17 @@ mod tests {
 
   #[test]
   fn insert() {
-    let mut buffer = VecBuffer::new();
+    // Todo, verify position of insert specifically.
     let data = create_data();
+    let mut compare = data.clone();
+    let mut buffer = VecBuffer::new();
     buffer.insert(&mut data.clone(), 0).unwrap();
-    assert_eq!(Ok(&data[..]), buffer.get_selection((0, buffer.len())));
+    // Check that it inserts as expected
+    let mut tmp = compare.split_off(3);
+    compare.append(&mut data.clone());
+    compare.append(&mut tmp);
+    buffer.insert(&mut data.clone(), 3).unwrap();
+    assert_eq!(Ok(&compare[..]), buffer.get_selection((0, buffer.len())));
   }
 
   #[test]
@@ -333,4 +353,144 @@ mod tests {
     );
   }
 
+  #[test]
+  fn mov() {
+    // Create identical buffers and verify the move by
+    // by comparing it to get_selection and insert
+    let mut tmp = create_data();
+    let mut buffer1 = VecBuffer::new();
+    let mut buffer2 = VecBuffer::new();
+    buffer1.insert(&mut tmp.clone(), 0).unwrap();
+    buffer2.insert(&mut tmp, 0).unwrap();
+    // forward
+    buffer1.mov((0,3), 5).unwrap();
+    let mut tmp = buffer2.get_selection((0,3)).unwrap().to_vec();
+    buffer2.insert(&mut tmp, 5 + 1).unwrap();
+    buffer2.delete((0,3)).unwrap();
+    assert_eq!(
+      buffer1.get_selection((0, buffer1.len())),
+      buffer2.get_selection((0, buffer2.len()))
+    );
+
+    // Recreate buffers and test backward
+    let mut tmp = create_data();
+    let mut buffer1 = VecBuffer::new();
+    let mut buffer2 = VecBuffer::new();
+    buffer1.insert(&mut tmp.clone(), 0).unwrap();
+    buffer2.insert(&mut tmp, 0).unwrap();
+    // backward
+    buffer1.mov((3,5), 2).unwrap();
+    let mut tmp = buffer2.get_selection((3,5)).unwrap().to_vec();
+    buffer2.delete((3,5)).unwrap();
+    buffer2.insert(&mut tmp, 2).unwrap();
+    assert_eq!(
+      buffer1.get_selection((0, buffer1.len())),
+      buffer2.get_selection((0, buffer2.len()))
+    );
+
+    // Verify the edges of moving into self
+    let mut buffer = create_buffer();
+    assert_eq!(
+      Err(MOVE_INTO_SELF),
+      buffer.mov((1,4), 1)
+    );
+    assert_eq!(
+      Err(MOVE_INTO_SELF),
+      buffer.mov((1,4), 3)
+    );
+    assert_eq!(
+      Ok(()),
+      buffer.mov((1,4), 4)
+    );
+    assert_eq!(
+      Ok(()),
+      buffer.mov((1,4), 0)
+    );
+  }
+
+  #[test]
+  fn copy() {
+    // Compare with get_selection and insert
+    let data = create_data();
+    let mut buffer1 = VecBuffer::new();
+    let mut buffer2 = VecBuffer::new();
+    buffer1.insert(&mut data.clone(), 0).unwrap();
+    buffer2.insert(&mut data.clone(), 0).unwrap();
+    // copy forward
+    buffer1.copy((1,3), 4).unwrap();
+    let mut tmp = buffer2.get_selection((1,3)).unwrap().to_vec();
+    buffer2.insert(&mut tmp, 4 + 1).unwrap();
+    assert_eq!(
+      buffer1.get_selection((0, buffer1.len())),
+      buffer2.get_selection((0, buffer2.len()))
+    );
+  }
+
+  #[test]
+  fn join() {
+    let mut data = create_data();
+    let mut buffer = VecBuffer::new();
+    buffer.insert(&mut data.clone(), 0).unwrap();
+    // First join two lines together, 1 and 2
+    buffer.join((1,3)).unwrap();
+    let tmp = data.remove(2);
+    data[1].pop(); // Get rid of the newline
+    data[1].push_str(&tmp);
+    assert_eq!(
+      &data[..],
+      buffer.get_selection((0,buffer.len())).unwrap()
+    );
+    // Then join the whole buffer
+    buffer.join((0,buffer.len())).unwrap();
+    let mut tmp = String::new();
+    for line in data {
+      tmp.push_str(&line[0 .. line.len() - 1]);
+    }
+    tmp.push('\n');
+    assert_eq!(
+      &tmp,
+      &buffer.get_selection((0,1)).unwrap()[0]
+    );
+  }
+
+  #[test]
+  fn search_replace() {
+    let mut data = vec!["test line\n".to_string(), "also a test line\n".to_string()];
+    let mut buffer = VecBuffer::new();
+    buffer.insert(&mut data.clone(), 0).unwrap();
+    // Verify non-global against replacen
+    buffer.search_replace(("test", "best"), (0, buffer.len()), false).unwrap();
+    let line = data[0].replacen("test", "best", 1);
+    data[0] = line;
+    assert_eq!(
+      &data[..],
+      buffer.get_selection((0,buffer.len())).unwrap()
+    );
+    // And verify global using replace
+    buffer.search_replace(("line", "string"), (0, buffer.len()), true).unwrap();
+    data = data.iter().map(|line| line.replace("line", "string")).collect();
+    assert_eq!(
+      &data[..],
+      buffer.get_selection((0,buffer.len())).unwrap()
+    );
+  }
+
+  #[test]
+  fn find_matching() {
+    let mut data = vec![
+      "test line\n".to_string(),
+      "hard to write random works\n".to_string(),
+      "to test over\n".to_string(),
+      "None the less, it is needed\n".to_string(),
+      "in this case\n".to_string()
+    ];
+    let mut buffer = VecBuffer::new();
+    buffer.insert(&mut data, 0).unwrap();
+    // Verify the return using known indices
+    assert_eq!(
+      vec![0,2],
+      buffer.find_matching("test", (0, buffer.len())).unwrap()
+    );
+
+  }
 }
