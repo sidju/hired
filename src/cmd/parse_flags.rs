@@ -5,11 +5,16 @@ use crate::error_consts::*;
 /// If a char in the input doesn't already exist in the map it errors.
 /// A typical call will look like
 /// let flags = parse_flags(&input, [('p', false), ('n', false), ('l', false)]).iter().cloned().collect()?;
-pub fn parse_flags(input: &str, mut flag_map: HashMap<char, bool>)
+pub fn parse_flags(input: &str, flag_list: &str)
   -> Result<HashMap<char, bool>, &'static str>
 {
-  for char in input.trim().chars() {
-    match flag_map.get_mut(&char) {
+  let mut flag_map = HashMap::new();
+  for flag in flag_list.chars() {
+    flag_map.insert(flag, false);
+  }
+
+  for flag in input.trim().chars() {
+    match flag_map.get_mut(&flag) {
       Some(b) => {
         if !(*b) { *b = true; Ok(()) }
         else { Err(DUPLICATE_FLAG) }

@@ -39,6 +39,7 @@ pub const UNDEFINED_COMMAND: &str = "Command not defined.\n\r";
 pub const SELECTION_FORBIDDEN: &str = "That command doesn't take a selection.\n\r";
 pub const UNSAVED_CHANGES: &str = "Unsaved changes. Force with the capitalised version of your command or save with 'w'.\n\r";
 pub const NO_ERROR: &str = "No errors recorded.\n\r";
+pub const NO_FILE: &str = "No file set.\n\r";
 
 // Post-command parsing errors
 pub const EXPRESSION_TOO_SHORT: &str = "Expression too short or not closed.\n\r";
@@ -54,7 +55,7 @@ pub const INVALID_REGEX: &str = "Invalid regex entered.\n\r";
 
 // File interaction errors
 pub const PERMISSION_DENIED: &str = "Could not open file. Permission denied.\n\r";
-pub const NOT_FOUND: &str = "Could not open file. Not found.\n\r";
+pub const NOT_FOUND: &str = "Could not open file. Not found or invalid path.\n\r";
 pub const UNKNOWN: &str = "Unknown error while reading file.\n\r";
 
 // Terminal interaction errors

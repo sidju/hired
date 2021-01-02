@@ -35,6 +35,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
     None => {
       // Get and update the selection.
       let sel = interpret_selection(selection, state.selection, state.buffer.len(), false);
+      state.buffer.verify_selection(sel)?;
       state.selection = Some(sel);
       view_changed = true; // Set to reprint
       Ok(())
@@ -43,6 +44,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       // Quit commands
       'q' => {
         if selection != Sel::Lone(Ind::Default) { return Err(SELECTION_FORBIDDEN); }
+        parse_flags(clean, "")?;
         if state.buffer.saved() {
           state.done = true;
           return Ok(());
@@ -53,32 +55,37 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       }
       'Q' => {
         if selection != Sel::Lone(Ind::Default) { return Err(SELECTION_FORBIDDEN); }
+        parse_flags(clean, "")?;
         state.done = true;
         return Ok(());
       }
       // Help commands
       '?' => {
         if selection != Sel::Lone(Ind::Default) { return Err(SELECTION_FORBIDDEN); }
+        parse_flags(clean, "")?;
         ui::print(&mut state.stdout, HELP_TEXT);
         Ok(())
       },
       'h' => {
         if selection != Sel::Lone(Ind::Default) { return Err(SELECTION_FORBIDDEN); }
+        parse_flags(clean, "")?;
         ui::print(&mut state.stdout, state.error.unwrap_or(NO_ERROR));
         Ok(())
       },
       'H' => {
         if selection != Sel::Lone(Ind::Default) { return Err(SELECTION_FORBIDDEN); }
+        parse_flags(clean, "")?;
         state.print_errors = !state.print_errors; // Toggle the setting
         Ok(())
       }
       // File commands
       'f' => { // Set or print filename
         if selection != Sel::Lone(Ind::Default) { return Err(SELECTION_FORBIDDEN); }
+        parse_flags(clean, "")?;
         match parse_path(clean) {
           None => { // Print current filename
             if state.file.len() == 0 {
-              ui::print(&mut state.stdout, "No file set.\n\r");
+              ui::print(&mut state.stdout, NO_FILE);
             }
             else {
               ui::println(&mut state.stdout, &state.file);
@@ -105,12 +112,18 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
             }
           }?;
         // Only 'e' cares if the buffer is saved
-        if !state.buffer.saved() & (ch == 'e') {
+        if !state.buffer.saved() && (ch == 'e') {
           Err(UNSAVED_CHANGES)
         }
         else {
           // Get the path (cutting of the command char and the trailing newline)
-          let path = parse_path(clean).unwrap_or(&state.file);
+          let path = parse_path(clean);
+          // If opening another file
+          // or inserting current file again
+          // or unconditionally resetting current changes
+          // then view has changed
+            if path.is_some() || ch == 'r' || ch == 'E' { view_changed = true; }
+          let path = path.unwrap_or(&state.file);
           // Read the data from the file
           let mut data = crate::file::read_file(path, ch == 'r')?;
           let datalen = data.len();
@@ -121,7 +134,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
           state.buffer.insert(&mut data, index)?;
           state.buffer.set_saved();
           state.file = path.to_string();
-          state.selection = Some((0,datalen));
+          state.selection = Some((index, index + datalen));
           Ok(())
         }
       },
@@ -130,6 +143,10 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
         let sel = interpret_selection(selection, state.selection, state.buffer.len(), true);
         // Get the path (cutting of the command char and the trailing newline)
         let path = parse_path(clean).unwrap_or(&state.file);
+        // Get flags
+        let q = parse_flags(&command[cmd_i + 1 ..], "q")?.remove(&'q').unwrap();
+        // If the 'q' flag is set the whole buffer must be selected
+        if q && sel != (0, state.buffer.len()) { return Err(UNSAVED_CHANGES); }
         // Get the data
         let data = state.buffer.get_selection(sel)?;
         let append = ch == 'W';
@@ -139,17 +156,21 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
         if sel == (0, state.buffer.len()) {
           state.buffer.set_saved();
           state.file = path.to_string();
+          state.done = q;
         }
-        state.selection = Some(sel);
+        else {
+          state.selection = Some(sel);
+        }
         Ok(())
       }
       // Print commands
       'p' | 'n' | 'l' => {
         // Get and update the selection.
         let sel = interpret_selection(selection, state.selection, state.buffer.len(), false);
+        state.buffer.verify_selection(sel)?;
         state.selection = Some(sel);
         // Get the flags
-        let mut flags = parse_flags(&command[cmd_i..].trim(), [('p', false), ('n', false), ('l', false)].iter().cloned().collect())?;
+        let mut flags = parse_flags(&command[cmd_i..], "pnl")?;
         // Set the global print flags (safe to unwrap since parse_flags never removes a key)
         p = flags.remove(&'p').unwrap();
         n = flags.remove(&'n').unwrap();
@@ -157,90 +178,80 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
         Ok(())
       }
       // Basic editing commands
-      'a' => {
-        // Get the input
+      'a' | 'i' | 'c' => {
+        let sel = interpret_selection(selection, state.selection, state.buffer.len(), false);
+        state.buffer.verify_selection(sel)?; // Might be a bit zealous, possibly vary by command
+        let mut flags = parse_flags(clean, "pnl")?;
+        p = flags.remove(&'p').unwrap();
+        n = flags.remove(&'n').unwrap();
+        l = flags.remove(&'l').unwrap();
+        // When all possible checks have been run, get input
         let mut input = ui::get_input(state)?;
-        // Calculate the selection
-        let index = interpret_selection(selection, state.selection, state.buffer.len(), false).1;
-        let end = index + input.len();
-        // Insert the data
-        state.buffer.insert(&mut input, index)?;
-        // Update the selection
-        state.selection = Some((index, end));
-        view_changed = true;
-        Ok(())
-      }
-      'i' => {
-        // Get the input
-        let mut input = ui::get_input(state)?;
-        // Calculate the selection
-        let index = interpret_selection(selection, state.selection, state.buffer.len(), false).0;
-        let end = index + input.len();
-        // Insert the data
-        state.buffer.insert(&mut input, index)?;
-        // Update the selection
-        state.selection = Some((index, end));
-        view_changed = true;
-        Ok(())
-      }
-      'c' => {
-        // Get the input
-        let mut input = ui::get_input(state)?;
-        // Calculate the selection
-        let selection = interpret_selection(selection, state.selection, state.buffer.len(), false);
-        let end = selection.0 + input.len();
-        // Perform the replace
-        state.buffer.change(&mut input, selection)?;
-        // Update the selection
-        state.selection = Some((selection.0, end));
+        let new_sel = match ch {
+          'a' => {
+            let end = sel.1 + input.len();
+            state.buffer.insert(&mut input, sel.1)?;
+            (sel.1, end)
+          },
+          'i' => {
+            let end = sel.0 + input.len();
+            state.buffer.insert(&mut input, sel.0)?;
+            (sel.0, end)
+          },
+          'c' => {
+            let end = sel.0 + input.len();
+            state.buffer.change(&mut input, sel)?;
+           (sel.0, end)
+          }
+          _ => { panic!("Unreachable code reached"); }
+        };
+        state.selection = Some(new_sel);
         view_changed = true;
         Ok(())
       }
       'd' => {
-        // Calculate the selection
-        let selection = interpret_selection(selection, state.selection, state.buffer.len(), false);
-        // Perform the deletion
-        state.buffer.delete(selection)?;
-        // Try to have a selection afterwards
-        if state.buffer.len() != 0 {
-          // If we didn't just delete the whole head we can sub one from selection.0 for a valid index
-          let start = if 0 != selection.0 { selection.0 - 1 } else { selection.0 };
-          // If we didn't just delete the whole tail we can add one to selection.0 for a valid index
-          let end = if state.buffer.len() != selection.0 { selection.0 + 1 } else { selection.0 };
-          // Since bufferlen != 0 either start or end have been modified to get a non-empty selection
-          state.selection = Some((start, end));
-        }
-        else {
-          state.selection = None;
-        }
+        let sel = interpret_selection(selection, state.selection, state.buffer.len(), false);
+        // Since selection after execution can be 0 it isn't allowed to auto print after
+        parse_flags(clean, "")?;
+        state.buffer.delete(sel)?;
+        // Try to figure out a selection after the deletion
+        state.selection = 
+          if sel.0 != 0 {
+            Some((sel.0 - 1, sel.0))
+          }
+          else if sel.0 != state.buffer.len() {
+            Some((sel.0, sel.0 + 1))
+          }
+          else {
+            None
+          }
+        ;
         view_changed = true;
         Ok(())
       }
       // Advanced editing commands
       'm' | 't' => {
-        // Parse the index to move to
-        let index = match parse_index(clean
-          // Shouldn't it trim the start instead?
-          .trim_end_matches(|c: char| c.is_ascii_alphabetic() )
-        )? {
-          // Shouldn't this exist in some "interpret_index" function instead?
-          Ind::Default => state.selection.unwrap_or((0,state.buffer.len())).1,
-          Ind::BufferLen => state.buffer.len(),
-          Ind::Relative(x) => u_i_add(
-            state.selection.map(|s| s.1).unwrap_or(state.buffer.len()),
-            x
-          ),
-          Ind::Literal(x) => x.saturating_sub(1),
-        };
+        // Split out the potential print flags from the index (nice extra feature)
+        let ind_end = clean.find( char::is_alphabetic ).unwrap_or(clean.len());
+        // Then parse first goal index, then flags
+        let index = interpret_index(
+          parse_index(&clean[..ind_end])?,
+          state.selection.map(|s| s.1),
+          state.buffer.len(),
+          state.buffer.len(),
+        );
+        let mut flags = parse_flags(&clean[ind_end..], "pnl")?;
+        p = flags.remove(&'p').unwrap();
+        n = flags.remove(&'n').unwrap();
+        l = flags.remove(&'l').unwrap();
         // Calculate the selection
         let selection = interpret_selection(selection, state.selection, state.buffer.len(), false);
         let end = index + (selection.1 - selection.0);
+        // Make the change
         if ch == 'm' {
-          // Perform the move
           state.buffer.mov(selection, index)?;
         }
         else {
-          // Copy instead of moving
           state.buffer.copy(selection, index)?;
         }
         // Update the selection
@@ -251,15 +262,17 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       'j' => {
         // Calculate the selection
         let selection = interpret_selection(selection, state.selection, state.buffer.len(), false);
-        // Perform the deletion
+        let mut flags = parse_flags(clean, "pnl")?;
+        p = flags.remove(&'p').unwrap();
+        n = flags.remove(&'n').unwrap();
+        l = flags.remove(&'l').unwrap();
         state.buffer.join(selection)?;
-        // Update the selection
         state.selection = Some((selection.0, selection.0 + 1)); // Guaranteed to exist, but may be wrong.
         view_changed = true;
         Ok(())
       }    
       // Regex commands
-      // s and g, is essence
+      // s and g, in essence
       's' /* | 'g' */ => {
         // Calculate the selection
         let selection = interpret_selection(selection, state.selection, state.buffer.len(), false);
@@ -268,17 +281,21 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
         // Split based on command
         if ch == 's' {
           if expressions.len() == 3 { // A proper new expression was given
-            let global = expressions[2].contains('g');
+            let mut flags = parse_flags(&(expressions[2]), "gpnl")?;
+            let g = flags.remove(&'g').unwrap();
+            p = flags.remove(&'p').unwrap();
+            n = flags.remove(&'n').unwrap();
+            l = flags.remove(&'l').unwrap();
             // Perform the command, which returns the resulting selection
             state.selection = Some(
-              state.buffer.search_replace((expressions[0], expressions[1]), selection, global)?
+              state.buffer.search_replace((expressions[0], expressions[1]), selection, g)?
             );         
+            view_changed = true;
           }
           else { return Err(EXPRESSION_TOO_SHORT); }
         }
         else { // implies 'g'
         }
-        view_changed = true;
         Ok(())
       }
       _cmd => {
@@ -303,7 +320,7 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
   else if view_changed {
     if let Some(sel) = state.selection {
       // Handle the cases where we would go out of index bounds
-      let start = sel.0.saturating_sub(5);
+      let start = sel.0.saturating_sub(15);
       let end = state.buffer.len();
       let output = state.buffer.get_selection((start,end))?;
       crate::ui::format_print(state, output, start, true, true, false)?; // TODO: Handle flags

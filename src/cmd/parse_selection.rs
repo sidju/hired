@@ -93,6 +93,24 @@ pub fn u_i_add(a: usize, b: i32)
     a.saturating_add(b as usize)
   }
 }
+
+pub fn interpret_index(
+  index: Ind,
+  old_selection: Option<usize>,
+  bufferlen: usize,
+  default: usize,
+)
+  -> usize
+{
+  let sel = old_selection.unwrap_or(default);
+  match index {
+    Ind::Default => default,
+    Ind::BufferLen => bufferlen,
+    Ind::Relative(x) => u_i_add(sel, x),
+    Ind::Literal(x) => x.saturating_sub(1),
+  }
+}
+
 pub fn interpret_selection(
   selection: Sel,
   old_selection: Option<(usize, usize)>,

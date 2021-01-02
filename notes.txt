@@ -4,15 +4,6 @@
  # Somewhere:
 - Create a testing macro for buffer implementations.
 
- # In cmd/mod.rs
-- Check our flag handling, allow no invalid flags!
-
-- Validate the selection when interpreting it, currently no command can set invalid selection.
-
-- Look over which commands to print view after.
-
-- Return error if fail to parse filepath for 'e', 'E', 'r'?
-
 
 # Do in UI fixup branch?
  # in ui/input.rs?

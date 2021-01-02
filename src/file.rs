@@ -25,6 +25,7 @@ pub fn write_file(filepath: &str, data: &[String], append: bool)
   write(filepath, data, append)
     .map_err(|e: std::io::Error| match e.kind() {
       ErrorKind::PermissionDenied => PERMISSION_DENIED,
+      ErrorKind::NotFound => NOT_FOUND,
       _ => {
         #[cfg(feature = "debug")] // Debug printouts if debug flag
         { println!("Error: {:?}", e); }
