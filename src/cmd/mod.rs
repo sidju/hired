@@ -180,7 +180,6 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       // Basic editing commands
       'a' | 'i' | 'c' => {
         let sel = interpret_selection(selection, state.selection, state.buffer.len(), false);
-        state.buffer.verify_selection(sel)?; // Might be a bit zealous, possibly vary by command
         let mut flags = parse_flags(clean, "pnl")?;
         p = flags.remove(&'p').unwrap();
         n = flags.remove(&'n').unwrap();
@@ -188,24 +187,35 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
         // When all possible checks have been run, get input
         let mut input = ui::get_input(state)?;
         let new_sel = match ch {
-          'a' => {
-            let end = sel.1 + input.len();
-            state.buffer.insert(&mut input, sel.1)?;
-            (sel.1, end)
-          },
-          'i' => {
-            let end = sel.0 + input.len();
-            state.buffer.insert(&mut input, sel.0)?;
-            (sel.0, end)
-          },
+          'a' | 'i' => {
+            if input.len() != 0 {
+              let start = if ch == 'a' { sel.1 } else { sel.0 };
+              let end = start + input.len();
+              state.buffer.insert(&mut input, start)?;
+              Some((start, end))
+            }
+            else {
+              // If no input the command was cancelled, keep the old selection
+              state.selection
+            }
+          }
           'c' => {
             let end = sel.0 + input.len();
             state.buffer.change(&mut input, sel)?;
-           (sel.0, end)
+            if input.len() != 0 {
+              Some((sel.0, end))
+            }
+            else {
+              // Same as delete, use same post-selection logic
+              if sel.0 != 0 { Some((sel.0 - 1, sel.0)) }
+              else if sel.0 != state.buffer.len() { Some((sel.0, sel.0 + 1)) }
+              else { None }
+            }
           }
           _ => { panic!("Unreachable code reached"); }
         };
-        state.selection = Some(new_sel);
+        // If resulting selection is empty, set original selection?
+        state.selection = new_sel;
         view_changed = true;
         Ok(())
       }
@@ -216,15 +226,9 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
         state.buffer.delete(sel)?;
         // Try to figure out a selection after the deletion
         state.selection = 
-          if sel.0 != 0 {
-            Some((sel.0 - 1, sel.0))
-          }
-          else if sel.0 != state.buffer.len() {
-            Some((sel.0, sel.0 + 1))
-          }
-          else {
-            None
-          }
+          if sel.0 != 0 { Some((sel.0 - 1, sel.0)) }
+          else if sel.0 != state.buffer.len() { Some((sel.0, sel.0 + 1)) }
+          else { None }
         ;
         view_changed = true;
         Ok(())
