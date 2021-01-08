@@ -7,8 +7,6 @@
 
 # Do in UI fixup branch?
  # in ui/input.rs?
-- Add some escape sequences to our input (\n most importantly, thus also \\).
-
 - Have some way to go back in command history (up-arrow in command input).
 
 # Printing fixes

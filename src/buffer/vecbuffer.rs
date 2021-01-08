@@ -471,8 +471,6 @@ mod tests {
       &data[..],
       buffer.get_selection((0,buffer.len())).unwrap()
     );
-    // And verify that global replace starts and stops where told
-    // TODO: A buffer with 4 identical lines, change the middle 2
   }
 
   #[test]

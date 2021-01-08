@@ -62,5 +62,5 @@ pub const UNKNOWN: &str = "Unknown error while reading file.\n\r";
 // No carriage returns, since only used through panic messages.
 pub const TERMINAL_READ: &str = "Failed to read from terminal.";
 pub const TERMINAL_WRITE: &str = "Failed to write to terminal.";
-pub const DISABLE_RAWMODE: &str = "Failed to clear raw mode. Either restart terminal or run 'reset'. Good luck!";
+pub const DISABLE_RAWMODE: &str = "\n\rFailed to clear raw mode. Either restart terminal or run 'reset'. Good luck!";
 

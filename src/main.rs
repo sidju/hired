@@ -11,6 +11,7 @@ use syntect::highlighting::Theme;
 pub mod error_consts;
 use error_consts::*;
 
+mod substitute;
 mod cmd;
 mod buffer;
 mod file;
@@ -112,10 +113,15 @@ fn main() {
   while !state.done {
 
     // Read command
-    let command = ui::get_command(&mut state);
+    let res = ui::get_command(&mut state)
+      // Perform substitution of escapes
+      .map(substitute::substitute)
+      // Run command
+      .and_then(|mut cmd| cmd::run(&mut state, &mut cmd))
+    ;
 
-    // Handle command
-    match command.and_then(|mut cmd| cmd::run(&mut state, &mut cmd)) {
+    // Handle result
+    match res {
       Ok(()) => {},
       Err(e) => {
         // Include for printing
