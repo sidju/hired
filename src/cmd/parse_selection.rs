@@ -107,7 +107,7 @@ pub fn interpret_index(
     Ind::Default => default,
     Ind::BufferLen => bufferlen,
     Ind::Relative(x) => u_i_add(sel, x),
-    Ind::Literal(x) => x.saturating_sub(1),
+    Ind::Literal(x) => x,
   }
 }
 

@@ -89,11 +89,11 @@ impl Buffer for VecBuffer {
     self.verify_selection(selection)?;
     self.verify_index(index)?;
     // Operation varies depending on moving forward or back
-    if index < selection.0 {
+    if index <= selection.0 {
       // split out the relevant parts of the buffer
       let mut tail = self.buffer.split_off(selection.1);
       let mut data = self.buffer.split_off(selection.0);
-      let mut middle = self.buffer.split_off(index);
+      let mut middle = self.buffer.split_off(index.saturating_sub(1));
       // Reassemble
       self.buffer.append(&mut data);
       self.buffer.append(&mut middle);
@@ -102,7 +102,7 @@ impl Buffer for VecBuffer {
     }
     else if index >= selection.1 {
       // split out the relevant parts of the buffer
-      let mut tail = self.buffer.split_off(index + 1);
+      let mut tail = self.buffer.split_off(index);
       let mut middle = self.buffer.split_off(selection.1);
       let mut data = self.buffer.split_off(selection.0);
       // Reassemble
@@ -126,10 +126,10 @@ impl Buffer for VecBuffer {
     }
     // Insert it, subtract one if copying to before selection
     let i = if index <= selection.0 {
-      index
+      index.saturating_sub(1)
     }
     else {
-      index + 1
+      index
     };
     let mut tail = self.buffer.split_off(i);
     self.buffer.append(&mut data);
@@ -151,8 +151,6 @@ impl Buffer for VecBuffer {
     self.buffer.append(&mut tail);
     Ok(())
   }
-
-  // THIS FAR LOOKED OVER!!!
 
   fn search_replace(&mut self, pattern: (&str, &str), selection: (usize, usize), global: bool) -> Result<(usize, usize), &'static str>
   {
@@ -365,7 +363,7 @@ mod tests {
     // forward
     buffer1.mov((0,3), 5).unwrap();
     let mut tmp = buffer2.get_selection((0,3)).unwrap().to_vec();
-    buffer2.insert(&mut tmp, 5 + 1).unwrap();
+    buffer2.insert(&mut tmp, 5).unwrap();
     buffer2.delete((0,3)).unwrap();
     assert_eq!(
       buffer1.get_selection((0, buffer1.len())),
@@ -382,7 +380,7 @@ mod tests {
     buffer1.mov((3,5), 2).unwrap();
     let mut tmp = buffer2.get_selection((3,5)).unwrap().to_vec();
     buffer2.delete((3,5)).unwrap();
-    buffer2.insert(&mut tmp, 2).unwrap();
+    buffer2.insert(&mut tmp, 2 - 1).unwrap();
     assert_eq!(
       buffer1.get_selection((0, buffer1.len())),
       buffer2.get_selection((0, buffer2.len()))
@@ -392,7 +390,7 @@ mod tests {
     let mut buffer = create_buffer();
     assert_eq!(
       Err(MOVE_INTO_SELF),
-      buffer.mov((1,4), 1)
+      buffer.mov((1,4), 2)
     );
     assert_eq!(
       Err(MOVE_INTO_SELF),
@@ -404,7 +402,7 @@ mod tests {
     );
     assert_eq!(
       Ok(()),
-      buffer.mov((1,4), 0)
+      buffer.mov((1,4), 1)
     );
   }
 
@@ -419,7 +417,7 @@ mod tests {
     // copy forward
     buffer1.copy((1,3), 4).unwrap();
     let mut tmp = buffer2.get_selection((1,3)).unwrap().to_vec();
-    buffer2.insert(&mut tmp, 4 + 1).unwrap();
+    buffer2.insert(&mut tmp, 4).unwrap();
     assert_eq!(
       buffer1.get_selection((0, buffer1.len())),
       buffer2.get_selection((0, buffer2.len()))
@@ -473,6 +471,8 @@ mod tests {
       &data[..],
       buffer.get_selection((0,buffer.len())).unwrap()
     );
+    // And verify that global replace starts and stops where told
+    // TODO: A buffer with 4 identical lines, change the middle 2
   }
 
   #[test]
