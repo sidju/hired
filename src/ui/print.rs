@@ -232,7 +232,7 @@ fn format_print_internal(
 
           // So we increment lines printed and check if done
           lines_printed += 1;
-          if as_view && lines_printed + 2 >= state.term_size.1 {break 'lines;}
+          if as_view && lines_printed + 3 >= state.term_size.1 {break 'lines;}
         }
       }
     }

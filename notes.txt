@@ -1,23 +1,13 @@
 #To do:
 
-
  # Somewhere:
 - Create a testing macro for buffer implementations.
-
 
 # Do in UI fixup branch?
  # in ui/input.rs?
 - Have some way to go back in command history (up-arrow in command input).
 
 # Printing fixes
-- Make view closer to centered on selection?
-
-- Skip newline before first printed line.
-
-- Add separator before printout.
-
-- Reduce goal view-size, so that preceeding command is visible?
-
 - Unify printing logic into one function. (Later branch)
 
 - Make printing handle tab.

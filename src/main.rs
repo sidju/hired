@@ -15,7 +15,6 @@ mod substitute;
 mod cmd;
 mod buffer;
 mod file;
-
 mod ui;
 
 use buffer::VecBuffer;
@@ -81,6 +80,9 @@ fn main() {
 
   // TODO: Add handling of custom config and custom themes!!!
 
+  // Use the terminal in raw mode during the core loop
+  crossterm::terminal::enable_raw_mode().expect("Failed to open terminal in raw mode");
+
   // Read in and handle command line arguments
   let mut first = true;
   for arg in std::env::args() {
@@ -99,15 +101,12 @@ fn main() {
           Ok(())
         })() {
           Ok(_) => {},
-          Err(e) => { println!("{}", e); }
+          Err(e) => { println!("{}\n\r", e); },
         },
       }
     }
     first = false;
   }
-
-  // Use the terminal in raw mode during the core loop
-  crossterm::terminal::enable_raw_mode().expect("Failed to open terminal in raw mode");
 
   // Loop until done. Take, identify and execute commands
   while !state.done {
