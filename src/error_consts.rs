@@ -16,6 +16,7 @@ pub const HELP_TEXT: &str =
 \rPrint commands:
 \r  p: Print the selection.
 \r  n: Print the selection with line numbers.
+\r  l: Print the selection with escapes on some invisible characters.
 \rBasic editing commands:
 \r  a: Append lines entered after the command to selection. Stop line entry with only '.' on a line.
 \r  i: Insert. Same as 'a' but places before selection.
