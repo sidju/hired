@@ -9,12 +9,12 @@ use syntect::parsing::SyntaxSet;
 use syntect::highlighting::Theme;
 
 pub mod error_consts;
+use error_consts::*;
 
-mod io;
+mod substitute;
 mod cmd;
 mod buffer;
 mod file;
-
 mod ui;
 
 use buffer::VecBuffer;
@@ -73,12 +73,15 @@ impl State {
 
 fn main() {
   println!("Welcome to hired. Ed with highlighting written in rust.");
-  //println!("For assistance, enter '?'.");
+  println!("For assistance, enter '?'.");
 
   // Init state
   let mut state = State::new();
 
   // TODO: Add handling of custom config and custom themes!!!
+
+  // Use the terminal in raw mode during the core loop
+  crossterm::terminal::enable_raw_mode().expect("Failed to open terminal in raw mode");
 
   // Read in and handle command line arguments
   let mut first = true;
@@ -89,7 +92,7 @@ fn main() {
         //Some('-') => 
         // TODO: Make something less horrifying to handle errors here
         _ => match (||->Result<(),&str> {
-          let mut data = file::read_file(&arg)?;
+          let mut data = file::read_file(&arg, false)?;
           let datalen = data.len();
           state.buffer.insert(&mut data, 0)?;
           state.buffer.set_saved();
@@ -98,36 +101,43 @@ fn main() {
           Ok(())
         })() {
           Ok(_) => {},
-          Err(e) => { println!("{}", e); }
+          Err(e) => { println!("{}\n\r", e); },
         },
       }
     }
     first = false;
   }
 
-  // Use the terminal in raw mode during the core loop
-  crossterm::terminal::enable_raw_mode().expect("Failed to open terminal in raw mode");
-
   // Loop until done. Take, identify and execute commands
   while !state.done {
 
     // Read command
-    let command = ui::get_command(&mut state);
+    let res = ui::get_command(&mut state)
+      // Perform substitution of escapes
+      .map(substitute::substitute)
+      // Run command
+      .and_then(|mut cmd| cmd::run(&mut state, &mut cmd))
+    ;
 
-    // Handle command
-    match command.and_then(|mut cmd| cmd::run(&mut state, &mut cmd)) {
+    // Handle result
+    match res {
       Ok(()) => {},
       Err(e) => {
+        // Include for printing
+        use std::io::Write;
+        use crossterm::{QueueableCommand, style::Print};
+
         state.error = Some(e);
         if state.print_errors {
-          println!("{}", e);
+          state.stdout.queue(Print(e)).expect(TERMINAL_WRITE);
         }
         else {
-          println!("?");
+          state.stdout.queue(Print("?\n\r")).expect(TERMINAL_WRITE);
         }
+        state.stdout.flush().expect(TERMINAL_WRITE);
       },
     }
   }
 
-  crossterm::terminal::disable_raw_mode().expect("Failed to clean raw mode before closing. Either restart terminal or run 'reset'. Good luck!");
+  crossterm::terminal::disable_raw_mode().expect(DISABLE_RAWMODE);
 }

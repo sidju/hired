@@ -1,19 +1,20 @@
 use std::io::ErrorKind;
-const PERMISSION_DENIED_ERR: &str = "Could not open file. Permission denied.";
-const FILE_NOT_FOUND: &str = "Could not open file. Not found.";
-const UNKNOWN_ERR: &str = "Unknown error while reading file.";
+use crate::error_consts::*;
 
 /// File IO abstractions
-pub fn read_file(filepath: &str) -> Result<Vec<String>, &'static str> {
+pub fn read_file(filepath: &str, must_exist: bool) -> Result<Vec<String>, &'static str> {
   match read(filepath) {
     Ok(x) => Ok(x),
     Err(e) => match e.kind() {
-      ErrorKind::PermissionDenied => Err(PERMISSION_DENIED_ERR),
-      ErrorKind::NotFound => Err(FILE_NOT_FOUND),
+      ErrorKind::PermissionDenied => Err(PERMISSION_DENIED),
+      ErrorKind::NotFound => {
+        if must_exist { Err(NOT_FOUND) }
+        else { Ok(Vec::with_capacity(0)) }
+      }
       _ => {
         #[cfg(feature = "debug")] // Debug printouts if debug flag
         { println!("Error: {:?}", e); }
-        Err(UNKNOWN_ERR)
+        Err(UNKNOWN)
       },
     },
   }
@@ -23,11 +24,12 @@ pub fn write_file(filepath: &str, data: &[String], append: bool)
 {
   write(filepath, data, append)
     .map_err(|e: std::io::Error| match e.kind() {
-      ErrorKind::PermissionDenied => PERMISSION_DENIED_ERR,
+      ErrorKind::PermissionDenied => PERMISSION_DENIED,
+      ErrorKind::NotFound => NOT_FOUND,
       _ => {
         #[cfg(feature = "debug")] // Debug printouts if debug flag
         { println!("Error: {:?}", e); }
-        UNKNOWN_ERR
+        UNKNOWN
       },
     })
 }
