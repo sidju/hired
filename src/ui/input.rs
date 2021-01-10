@@ -24,16 +24,18 @@ fn find_boundary(s: &str, i: usize) -> usize {
 
 // This input getter runs get_event and buffers the input until a lone . appears on a line
 // Then it returns that buffer.
-fn event_input(state: &mut crate::State, one_line: bool)
+fn event_input(state: &mut crate::State, command: bool)
   -> Result<Vec<String>, crossterm::ErrorKind>
 {
-  // To be placed in State
-  let mut out = std::io::stdout();
-
   // Set the cursor to be visible, so our moves are visible
-  out.queue(crossterm::cursor::Show)?;
+  state.stdout.queue(crossterm::cursor::Show)?;
+  // Also print the prompt string, so that it exists before the first received event
+  if command {
+    state.stdout.queue(crossterm::style::Print(&state.prompt))?;
+    state.stdout.flush()?;
+  }
 
-    // Create the buffer and the variables to move in it
+  // Create the buffer and the variables to move in it
   let mut buffer = Vec::new();
   buffer.push("\n".to_string());
   let mut lindex = 0; // Line index, lin-dex
@@ -131,7 +133,7 @@ fn event_input(state: &mut crate::State, one_line: bool)
 
         (KeyCode::Enter, KeyModifiers::NONE) => {
           // If only getting one line, return
-          if one_line {
+          if command {
             ret = true;
           }
           // Else, add a line
@@ -223,18 +225,25 @@ fn event_input(state: &mut crate::State, one_line: bool)
       } // End of matching key-codes and modifiers
 
       // Then we print
-      dists = crate::ui::print::print_input(state, &mut out, &buffer, lindex, chindex, dists.0)?;
+      dists = crate::ui::print::print_input(
+        state,
+        &buffer,
+        lindex,
+        chindex,
+        dists.0,
+        command,
+      )?;
     } // End of Key input event matching
 
   }} // End of while and event match
 
   // To not overwrite any of our buffer, go to bottom an move to next line
   if dists.1 > 0 {
-    out.queue(crossterm::cursor::MoveDown(dists.1))?;
+    state.stdout.queue(crossterm::cursor::MoveDown(dists.1))?;
   }
-  out.queue(crossterm::style::Print("\n\r"))?;
+  state.stdout.queue(crossterm::style::Print("\n\r"))?;
   // Then flush and return
-  out.flush()?;
+  state.stdout.flush()?;
   Ok(buffer)
 }
 

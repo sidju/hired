@@ -1,4 +1,4 @@
-pub fn substitute(input: String) -> String {
+pub fn substitute(input: &str) -> String {
   let mut out = String::new();
   let mut escaped = false;
 
@@ -9,8 +9,12 @@ pub fn substitute(input: String) -> String {
       match ch {
         'n' => out.push('\n'),
         't' => out.push('\t'),
-        // If no special, just put in the given character
-        c => out.push(c),
+        c => {
+          // If no special, insert the false
+          // escape and the character after
+          out.push('\\');
+          out.push(c);
+        },
       }
       escaped = false;
     }

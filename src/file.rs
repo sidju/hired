@@ -61,9 +61,7 @@ fn write(filepath: &str, data: &[String], append: bool) -> std::io::Result<()> {
         .open(filepath)?;
     let mut writer = BufWriter::new(file);
     for line in data {
-        if line.len() != writer.write(line.as_bytes())? {
-            panic!("Didn't write the entire line. Change write to write_all");
-        }
+        writer.write_all(line.as_bytes())?;
     }
     writer.flush()?;
     Ok(())

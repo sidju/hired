@@ -3,6 +3,7 @@ use crate::ui;
 
 use crate::buffer::Buffer;
 
+mod substitute;
 mod parse_selection;
 use parse_selection::*;
 mod parse_expressions;
@@ -141,10 +142,15 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
       'w' | 'W' => {
         // Get the selection to write
         let sel = interpret_selection(selection, state.selection, state.buffer.len(), true);
-        // Get the path (cutting of the command char and the trailing newline)
-        let path = parse_path(clean).unwrap_or(&state.file);
-        // Get flags
-        let q = parse_flags(&command[cmd_i + 1 ..], "q")?.remove(&'q').unwrap();
+        // If not wq, parse path
+        let (q, path) = if clean.len() != 1 {
+          let path = parse_path(clean).unwrap_or(&state.file);
+          (false, path)
+        }
+        // If wq, use current file path
+        else {
+          (true, &state.file[..])
+        };
         // If the 'q' flag is set the whole buffer must be selected
         if q && sel != (0, state.buffer.len()) { return Err(UNSAVED_CHANGES); }
         // Get the data
@@ -290,9 +296,10 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
             p = flags.remove(&'p').unwrap();
             n = flags.remove(&'n').unwrap();
             l = flags.remove(&'l').unwrap();
+            let substituted = substitute::substitute(expressions[1]);
             // Perform the command, which returns the resulting selection
             state.selection = Some(
-              state.buffer.search_replace((expressions[0], expressions[1]), selection, g)?
+              state.buffer.search_replace((expressions[0], &substituted), selection, g)?
             );         
             view_changed = true;
           }

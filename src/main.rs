@@ -2,16 +2,12 @@
 /// Red, a minimalistic ed-like text editor written in rust.
 /// The goal is to replicate all relevant functions in ed and add some additional features to make it more usable.
 
-#[macro_use]
-extern crate derivative;
-
 use syntect::parsing::SyntaxSet;
 use syntect::highlighting::Theme;
 
 pub mod error_consts;
 use error_consts::*;
 
-mod substitute;
 mod cmd;
 mod buffer;
 mod file;
@@ -24,8 +20,6 @@ use buffer::Buffer;
 const THEME: &[u8] = include_bytes!("../assets/theme.xml");
 
 // Runtime variables
-#[derive(Derivative)]
-#[derivative(Debug)]
 pub struct State {
   // Configurations
   prompt: String, // The string printed out when accepting commands
@@ -39,12 +33,9 @@ pub struct State {
   // Buffer and our position in it
   file: String,// The one to write to by default
   selection: Option<(usize, usize)>, // The start and end of selected lines
-  #[derivative(Debug="ignore")]
   buffer: VecBuffer, // The editing buffer
   // Data for syntax highlighting
-  #[derivative(Debug="ignore")]
   syntax_lib: SyntaxSet,
-  #[derivative(Debug="ignore")]
   theme: Theme,
 }
 impl State {
@@ -52,7 +43,7 @@ impl State {
     let mut theme_reader = std::io::Cursor::new(&THEME[..]);
     let theme = syntect::highlighting::ThemeSet::load_from_reader(&mut theme_reader).unwrap();
     Self {
-      prompt: String::new(),
+      prompt: ":".to_string(),
       print_errors: true,
 
       stdout: std::io::stdout(),
@@ -113,8 +104,6 @@ fn main() {
 
     // Read command
     let res = ui::get_command(&mut state)
-      // Perform substitution of escapes
-      .map(substitute::substitute)
       // Run command
       .and_then(|mut cmd| cmd::run(&mut state, &mut cmd))
     ;

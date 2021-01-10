@@ -127,17 +127,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "derivative"
-version = "2.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb582b60359da160a9477ee80f15c8d784c477e69c217ef2cdd4169c24ea380f"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "fancy-regex"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -167,10 +156,9 @@ checksum = "2fad85553e09a6f881f739c29f0b00b0f01357c743266d478b68951ce23285f3"
 
 [[package]]
 name = "hired"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "crossterm",
- "derivative",
  "regex",
  "syntect",
 ]
