@@ -288,15 +288,17 @@ pub fn print_input(
       chars_printed += state.prompt.chars().count();
     }
 
-    // If this isn't the first line, newline and carriage retun
-    if linenr != 0 {
-      state.stdout.queue(Print("\n\r"))?;
-      // And incement height and maybe y
-      height += 1;
-      if passed { y += 1; }
-    }
-
     for (i, ch) in line.char_indices() {
+      // If wrapping or starting a new line increment lines printed
+      // exceptions to this are the first line, which should be cleared by a preceeding newline.
+      if (chars_printed % state.term_size.0) == 0 && linenr > 0 {
+        // Print newline and carriage return
+        state.stdout.queue(Print("\n\r"))?;
+        // Increment height related variables
+        height += 1;
+        if passed { y += 1; }
+      }
+
       // If we haven't reached our current cursor position before, check if we have now.
       // This by nesting if not found, if lindex == line_i, if chindex == i
       if ! passed {
@@ -307,20 +309,9 @@ pub fn print_input(
           passed = true;
         }
       }
-    
-      // Ignore characters that are newlines (since they confuse our wrapping and are handled by the end of line)
+
+      // Print the current character (unless newline or carriage return)
       if ch != '\n' && ch != '\r' {
-        // If our current x position is 0 in modulo of the terminal width
-        // we are about to go out the side of the terminal
-        if chars_printed + 1 % state.term_size.0 == 0 {
-          // Print newline and carriage return
-          state.stdout.queue(Print("\n\r"))?;
-          // Increment the height of this print
-          height += 1;
-          // If the cursor is marked as found/passed, increment cursor height as well
-          if passed { y += 1; }
-        }
-    
         // Increment the number of characters printed
         chars_printed += 1;
         // Finally, print the character

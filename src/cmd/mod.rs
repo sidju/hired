@@ -133,8 +133,10 @@ pub fn run<'a>(state: &'a mut crate::State, command: &'a mut str)
             state.buffer = crate::buffer::VecBuffer::new();
           }
           state.buffer.insert(&mut data, index)?;
-          state.buffer.set_saved();
-          state.file = path.to_string();
+          if ch != 'r' {
+            state.buffer.set_saved();
+            state.file = path.to_string();
+          }
           state.selection = Some((index, index + datalen));
           Ok(())
         }
