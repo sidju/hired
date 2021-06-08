@@ -4,10 +4,21 @@ const THEME: &[u8] = include_bytes!("../assets/theme.xml");
 // All UI abtractions
 mod hui;
 
+use argh::FromArgs;
+
+#[derive(FromArgs)]
+/// hired, the highlighting EDitor
+struct Args {
+  /// path to the file to open
+  #[argh(positional, default = "String::new()")]
+  path: String,
+}
+
 pub fn main() {
   // We start by handling command line input
-  // TODO: Handle command line input
-  let path = "".to_string();
+  let args: Args = argh::from_env();
+  
+  let path = args.path;
 
   // Create buffer and use command line input to init it
   let mut buffer = add_ed::buffer::VecBuffer::new();
