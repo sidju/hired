@@ -162,7 +162,7 @@ pub fn internal_print(
         if n && (i % state.term_size.0 == 0) {
           reset_style(&mut stdout)?;
           // Convert our 0-indexed int to a 1-indexed string
-          let tmp_num = (start_line + linenr).to_string();
+          let tmp_num = (start_line + linenr + 1).to_string();
           let tmp_num_len = tmp_num.len();
           // If this is a new line, print number
           if i == 0 {
