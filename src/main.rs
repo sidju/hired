@@ -18,6 +18,7 @@ pub fn main() {
   // We start by handling command line input
   let args: Args = argh::from_env();
   
+  // Use the parsed input to configure UI and editor
   let path = args.path;
 
   // Create buffer and use command line input to init it

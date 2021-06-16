@@ -179,23 +179,22 @@ pub fn internal_print(
           apply_style(style, &mut stdout)?;
         }
 
-        // After printing weird stuff we check againts our given cursor, if given
-        // We check before the character to prevent being on the wrong line if the
-        // character is a newline
+        // After printing potential prefixes we check againts our given cursor, if given
+        // We must check before printing ch, since printing newline resets i
+        // Specifically we check if the cursor is before the current ch
         if let Some(cur) = cursor {
           if ! passed {
-            // For each char while not passed add their len to byte-index
-            byte_index += ch.len_utf8();
-            if cur.0 <= linenr && cur.1 <= byte_index {
+            if (cur.0 == linenr && cur.1 <= byte_index) || cur.0 < linenr {
               // This all means we have passed by the given cursor for the first time
+              // Due to needing to place the cursor one step down in that case we specially handle '\n'
               // Calculate current column and save in x
-              x = (i % state.term_size.0) as u16;
-              // If the current character isn't a newline, add one extra
-              // If someone can explain why, please write it here
-              if ch != '\n' { x += 1; }
+              x = (i % state.term_size.0) as u16 + 1;
               // Mark that we have passed, this will increment y for each new line started
               passed = true;
             }
+            // For each char while not passed add their len to byte-index
+            // Add after checking, since we otherwise cannot go to char index 0
+            byte_index += ch.len_utf8();
           }
         }
 
@@ -204,9 +203,6 @@ pub fn internal_print(
         match ch {
           '\n' => {
             if l { stdout.queue(Print('$'))?; }
-            stdout.queue(Print("\n\r"))?;
-            print_height += 1;
-            if passed { y += 1; }
             i = 0;
           },
           '$' => if l {
@@ -223,7 +219,7 @@ pub fn internal_print(
         }
 
         // Check if a new line is needed, aka. newline or wrapping
-        if i % state.term_size.0 == 0 && i != 0 {
+        if i % state.term_size.0 == 0 {
           stdout.queue(Print("\n\r"))?;
           print_height += 1;
           if passed { y += 1; }
@@ -234,7 +230,6 @@ pub fn internal_print(
   // Closing cleanup and flush
   reset_style(&mut stdout)?;
   // Note that this increases height and y
-//  print_separator(&mut stdout, state.term_size.0)?;
   stdout.flush()?;
   Ok(PrintData{
     height: print_height,

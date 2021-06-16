@@ -82,7 +82,7 @@ pub fn event_input(
       stdout.queue(crossterm::cursor::MoveUp(dists.cursor_y))?;
     }
     // We add one, since we wish the cursor to be one step beyond the last character
-    stdout.queue(crossterm::cursor::MoveToColumn(dists.cursor_x + 1))?;
+    stdout.queue(crossterm::cursor::MoveToColumn(dists.cursor_x))?;
     // Then make sure to flush this, or the cursor won't move
     stdout.flush()?;
 
