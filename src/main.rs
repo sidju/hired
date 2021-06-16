@@ -1,5 +1,6 @@
 // Import the highlighting theme
-const THEME: &[u8] = include_bytes!("../assets/theme.xml");
+const THEME: &[u8] = include_bytes!("../assets/compressed_theme");
+const SYNTAXES: &[u8] = include_bytes!("../assets/compressed_syntaxes");
 
 // All UI abtractions
 mod hui;

@@ -1,0 +1,3 @@
+[submodule "assets/syntaxes/Packages"]
+	path = assets/syntaxes/Packages
+	url = https://github.com/slimsag/Packages.git

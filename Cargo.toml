@@ -22,6 +22,12 @@ debug = []
 
 [dependencies]
 add-ed = { version = "0.7", features = ["vecbuffer"] }
-syntect = { version = "4.5", default-features = false, features = ["default-fancy"] }
+syntect = { version = "4.5", default-features = false, features = [
+  "dump-load-rs", # for loading the compressed dump created by build.rs
+  "parsing", # For the actual parsing
+] }
 crossterm = "0.19"
 argh = "0.1"
+
+[build-dependencies]
+syntect = { version = "4.5" } # Onigura regex engine better handles inconsistencies in the syntax files

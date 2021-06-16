@@ -5,6 +5,7 @@ use std::io::stdout;
 
 // Import the custom syntect theme for 16 color printing
 use super::THEME;
+use super::SYNTAXES;
 
 // use the UI trait, to implement it
 use add_ed::ui::UI;
@@ -21,10 +22,10 @@ pub struct HighlightingUI {
 }
 impl HighlightingUI {
   pub fn new() -> Self {
-    let mut theme_reader = std::io::Cursor::new(&THEME[..]);
-    let theme = syntect::highlighting::ThemeSet::load_from_reader(&mut theme_reader).unwrap();
+    let theme: Theme = syntect::dumps::from_binary(THEME);
+    let syntax: SyntaxSet = syntect::dumps::from_binary(SYNTAXES);
     Self{
-      syntax_lib: SyntaxSet::load_defaults_newlines(),
+      syntax_lib: syntax,
       theme: theme,
       term_size: crossterm::terminal::size().map(|(a,b)| (a as usize, b as usize)).unwrap_or((80,24)),
     }
