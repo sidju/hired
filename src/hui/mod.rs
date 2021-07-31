@@ -19,6 +19,7 @@ pub struct HighlightingUI {
   syntax_lib: SyntaxSet,
   theme: Theme,
   term_size: (usize, usize),
+  command_history: Vec<String>,
 }
 impl HighlightingUI {
   pub fn new() -> Self {
@@ -28,6 +29,7 @@ impl HighlightingUI {
       syntax_lib: syntax,
       theme: theme,
       term_size: crossterm::terminal::size().map(|(a,b)| (a as usize, b as usize)).unwrap_or((80,24)),
+      command_history: Vec::new(),
     }
   }
 }
@@ -52,15 +54,16 @@ impl UI for HighlightingUI {
     _ed: EdState,
     prefix: Option<char>,
   ) -> Result<String, &'static str> {
-    Ok(
-      input::event_input(
+    let command = input::event_input(
         self,
         prefix,
         None, // We want one line specifically
       )
         .map_err(|_| TERMINAL_READ)?
         .remove(0)
-    )
+    ;
+    self.command_history.push(command.clone());
+    Ok(command)
   }
   fn get_input(
     &mut self,

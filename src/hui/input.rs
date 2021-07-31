@@ -40,6 +40,12 @@ pub fn event_input(
   let mut lindex = 0; // Line index, lin-dex
   let mut chindex = 0; // Char index, ch-index
 
+  // Variable for tracking how many steps back in history
+  // we are when moving back in history
+  let mut hoffset = state.command_history.len();
+  // And one for keeping current input while moving about in history
+  let mut semi_history = "\n".to_string();
+
   // Then the distances we need to remember between printing
   let mut dists = super::print::PrintData{ height: 0, cursor_y: 0, cursor_x: 0 };
 
@@ -226,11 +232,43 @@ pub fn event_input(
           },
   
           (KeyCode::Up, KeyModifiers::NONE) | (KeyCode::Down, KeyModifiers::NONE) => {
-            // First move to the indicated line, if possible
-            match key.code {
-              KeyCode::Up => { lindex = lindex.saturating_sub(1); },
-              KeyCode::Down => { if lindex < buffer.len() - 1 { lindex += 1; } },
-              _ => (),
+            // Go back/forth in history if in one-line mode
+            if terminator.is_none() {
+              match key.code {
+                KeyCode::Up => {
+                  // If leaving present
+                  if hoffset == state.command_history.len() {
+                    // Save current input line as semi history, unwrap or shouldn't ever be needed
+                    semi_history = buffer.pop().unwrap_or("\n".to_string());
+                  }
+                  else {
+                    buffer.pop();
+                  }
+                  // Then move into history
+                  hoffset = hoffset.saturating_sub(1);
+                },
+                KeyCode::Down => {
+                  // If not in the present, move forward in history
+                  if hoffset < state.command_history.len() { hoffset += 1; }
+                  buffer.pop();
+                },
+                _ => (),
+              }
+              // Read that history entry into the buffer
+              buffer.push(
+                state.command_history
+                  .get(hoffset) // Get history at offset
+                  .map(|line| line.clone()) // Convert from &str to String
+                  .unwrap_or(semi_history.clone()) // If none we have arrived in the present
+              )
+            }
+            else {
+              // First move to the indicated line, if possible
+              match key.code {
+                KeyCode::Up => { lindex = lindex.saturating_sub(1); },
+                KeyCode::Down => { if lindex < buffer.len() - 1 { lindex += 1; } },
+                _ => (),
+              }
             }
             // Then try to go to goal_chindex and place chindex within the new line
             match goal_chindex {
