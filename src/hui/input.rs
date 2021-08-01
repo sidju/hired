@@ -173,7 +173,7 @@ pub fn event_input(
             }
             // Else, add a line
             else {
-              // Insert the newline
+              // Insert a newline to properly terminate current line
               buffer[lindex].insert(chindex, '\n');
               chindex += 1;
               // Split of the string at current index, inserting the resulting strings into buffer
@@ -182,16 +182,14 @@ pub fn event_input(
               // If the line left behind is now a lone dot on a line, delete it and return
               // Check if we just created the terminating line
               let mut iter = buffer[lindex].chars();
-              if iter.next() == terminator {
-                if iter.next() == Some('\n') {
-                  // Remove the terminating line
+              if iter.next() == terminator && iter.next() == Some('\n') {
+                // Remove the terminating line
+                buffer.remove(lindex);
+                // Check to clear unexpected line created after terminating
+                if buffer[lindex] == "\n" {
                   buffer.remove(lindex);
-                  // Check to clear unexpected line created after terminating
-                  if buffer[lindex] == "\n" {
-                    buffer.remove(lindex);
-                  }
-                  ret = true;
                 }
+                ret = true;
               }
               // Else increment and reset chindex.
               else {
