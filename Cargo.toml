@@ -1,7 +1,7 @@
 [package]
 name = "hired"
 description = "Highlighting rust clone of ed"
-version = "0.7.0"
+version = "0.8.0"
 homepage = "https://github.com/sidju/hired"
 repository = "https://github.com/sidju/hired"
 readme = "README.md"
@@ -21,7 +21,7 @@ include = [
 debug = []
 
 [dependencies]
-add-ed = { version = "0.7", features = ["vecbuffer"] }
+add-ed = { version = "0.8", features = ["vecbuffer", "initial_input_data"] }
 syntect = { version = "4.5", default-features = false, features = [
   "dump-load-rs", # for loading the compressed dump created by build.rs
   "parsing", # For the actual parsing

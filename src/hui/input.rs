@@ -22,10 +22,14 @@ fn find_boundary(s: &str, i: usize) -> usize {
   i
 }
 
-// This input getter runs get_event and buffers the input until a lone . appears on a line
-// Then it returns that buffer.
+// This input getter runs get_event and buffers the input with expected editing features
+// Initial contents of the buffer is given as a vector of newline terminated strings
+// A prefix can be given, which is then printed at start of every line and not included in input
+// A terminator can be given.
+// If given: input is returned after terminator has been entered alone on a line. Else on newline.
 pub fn event_input(
   state: &mut super::HighlightingUI,
+  initial_buffer: Vec<String>,
   prefix: Option<char>,
   terminator: Option<char>, // If none take only one line
 ) -> Result<Vec<String>, crossterm::ErrorKind> {
@@ -34,9 +38,9 @@ pub fn event_input(
   // Set the cursor to be visible, so our moves are visible
   stdout.queue(crossterm::cursor::Show)?;
 
-  // Create the buffer and the variables to move in it
-  let mut buffer = Vec::new();
-  buffer.push("\n".to_string());
+  // Set up buffer and variables for moving in it
+  let mut buffer = initial_buffer;
+  if buffer.len() == 0 { buffer.push("\n".to_string()); } // The buffer mustn't be empty
   let mut lindex = 0; // Line index, lin-dex
   let mut chindex = 0; // Char index, ch-index
 

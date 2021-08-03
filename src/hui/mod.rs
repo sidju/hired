@@ -56,6 +56,7 @@ impl UI for HighlightingUI {
   ) -> Result<String, &'static str> {
     let command = input::event_input(
         self,
+        Vec::new(),
         prefix,
         None, // We want one line specifically
       )
@@ -69,9 +70,11 @@ impl UI for HighlightingUI {
     &mut self,
     _ed: EdState,
     terminator: char,
+    initial_buffer: Option<Vec<String>>,
   ) -> Result<Vec<String>, &'static str> {
     input::event_input(
       self,
+      initial_buffer.unwrap_or(Vec::new()),
       None, // No line prefix for input
       Some(terminator)
     )
