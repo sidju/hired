@@ -133,6 +133,16 @@ pub fn event_input(
               buffer[lindex].insert(tmp, partial.remove(0));
             }
           },
+
+          (KeyCode::Tab, KeyModifiers::NONE) => {
+            partial.push('\t');
+            // If the partial is now complete, put it in the buffer
+            if partial.is_char_boundary(0) {
+              let tmp = chindex;
+              chindex += partial.len();
+              buffer[lindex].insert(tmp, partial.remove(0));
+            }
+          },
   
           (KeyCode::Backspace, KeyModifiers::NONE) | (KeyCode::Char('h'), KeyModifiers::CONTROL) => {
             if chindex == 0 {

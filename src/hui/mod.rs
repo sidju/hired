@@ -44,8 +44,10 @@ impl UI for HighlightingUI {
   ) -> Result<(), &'static str> {
     use crossterm::style::Print;
     let mut stdout = stdout();
-    stdout.queue(Print(text)).map_err(|_| TERMINAL_WRITE)?;
-    stdout.queue(Print("\n\r")).map_err(|_| TERMINAL_WRITE)?;
+    for line in text.lines() {
+      stdout.queue(Print(line)).map_err(|_| TERMINAL_WRITE)?;
+      stdout.queue(Print("\n\r")).map_err(|_| TERMINAL_WRITE)?;
+    }
     stdout.flush().map_err(|_| TERMINAL_WRITE)?;
     Ok(())
   }
