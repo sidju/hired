@@ -41,8 +41,8 @@ pub fn event_input(
   // Set up buffer and variables for moving in it
   let mut buffer = initial_buffer;
   if buffer.len() == 0 { buffer.push("\n".to_string()); } // The buffer mustn't be empty
-  let mut lindex = 0; // Line index, lin-dex
-  let mut chindex = 0; // Char index, ch-index
+  let mut lindex = buffer.len() - 1; // Line index, lin-dex
+  let mut chindex = buffer[lindex].len() - 1; // Char index, ch-index
 
   // Variable for tracking how many steps back in history
   // we are when moving back in history
@@ -272,7 +272,10 @@ pub fn event_input(
                   .get(hoffset) // Get history at offset
                   .map(|line| line.clone()) // Convert from &str to String
                   .unwrap_or(semi_history.clone()) // If none we have arrived in the present
-              )
+              );
+              // Set cursor to tail of history entry
+              lindex = 0;
+              chindex = buffer[0].len() - 1;
             }
             else {
               // First move to the indicated line, if possible
@@ -281,16 +284,16 @@ pub fn event_input(
                 KeyCode::Down => { if lindex < buffer.len() - 1 { lindex += 1; } },
                 _ => (),
               }
-            }
-            // Then try to go to goal_chindex and place chindex within the new line
-            match goal_chindex {
-              Some(tmp) => { chindex = tmp; },
-              None => (),
-            }
-            // If current chindex is too big, save it as goal and go to nearest valid chindex
-            if chindex >= buffer[lindex].len() {
-              goal_chindex = Some(chindex);
-              chindex = buffer[lindex].len() - 1;
+              // Then try to go to goal_chindex and place chindex within the new line
+              match goal_chindex {
+                Some(tmp) => { chindex = tmp; },
+                None => (),
+              }
+              // If current chindex is too big, save it as goal and go to nearest valid chindex
+              if chindex >= buffer[lindex].len() {
+                goal_chindex = Some(chindex);
+                chindex = buffer[lindex].len() - 1;
+              }
             }
           },
   
