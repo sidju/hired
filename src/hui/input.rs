@@ -81,11 +81,14 @@ pub fn event_input(
       state,
       &syntax,
       &mut buffer.iter().map(|line| &line[..]),
-      prefix,
-      Some((lindex, chindex)),
-      0,
-      false,
-      false,
+      super::print::PrintConf {
+        prefix: prefix,
+        cursor: Some((lindex, chindex)),
+        start_line: 0,
+        literal: false,
+        numbered: false,
+        separator: true,
+      },
     )?;
     // And move to the positions returned
     if dists.cursor_y > 0 {
@@ -115,8 +118,8 @@ pub fn event_input(
   
         // If doing anything but moving up/down, clear goal_chindex
         if (key.code != KeyCode::Up &&
-           key.code != KeyCode::Down ) ||
-           key.modifiers != KeyModifiers::NONE
+          key.code != KeyCode::Down ) ||
+          key.modifiers != KeyModifiers::NONE
         {
           goal_chindex = None;
         }
@@ -280,8 +283,14 @@ pub fn event_input(
             else {
               // First move to the indicated line, if possible
               match key.code {
-                KeyCode::Up => { lindex = lindex.saturating_sub(1); },
-                KeyCode::Down => { if lindex < buffer.len() - 1 { lindex += 1; } },
+                KeyCode::Up => {
+                  lindex = lindex.saturating_sub(1);
+                },
+                KeyCode::Down => { 
+                  if lindex < buffer.len() - 1 { lindex += 1; }
+                  // If on last line set chindex to max, so goal_chindex keeps cursor at EOL
+                  else { chindex = usize::MAX }
+                },
                 _ => (),
               }
               // Then try to go to goal_chindex and place chindex within the new line
@@ -328,11 +337,14 @@ pub fn event_input(
     state,
     &syntax,
     &mut buffer.iter().map(|line| &line[..]),
-    prefix,
-    None,
-    0,
-    false,
-    false,
+    super::print::PrintConf {
+      prefix: prefix,
+      cursor: None,
+      start_line: 0,
+      numbered: false,
+      literal: false,
+      separator: true,
+    },
   )?;
   // Then flush and return
   stdout.flush()?;

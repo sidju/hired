@@ -22,18 +22,20 @@ pub fn main() {
   // Use the parsed input to configure UI and editor
   let path = args.path;
 
-  // Create buffer and use command line input to init it
+  // Construct editor
   let mut buffer = add_ed::buffer::VecBuffer::new();
-
-  // Then we construct our UI
   let mut ui = hui::HighlightingUI::new();
+  let mut ed = add_ed::Ed::new(&mut buffer, path).expect("Failed to open file.");
+
+  // Start raw mode after opening file, to not use .expect() when in raw mode
   crossterm::terminal::enable_raw_mode().expect("Failed to configure terminal.");
 
-  // Then start up the editor
-  let mut ed = add_ed::Ed::new(&mut buffer, path).expect("Failed to open file.");
-  ed.run(&mut ui).unwrap();
+  // Run the editor, saving result
+  let res = ed.run(&mut ui);
 
-  // Clear out raw mode before closing
+  // Clear out raw mode before reacting to result
   crossterm::terminal::disable_raw_mode()
     .expect("Failed to clear raw mode. Run 'reset' to fix terminal.");
+
+  res.unwrap();
 }

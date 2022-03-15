@@ -99,13 +99,14 @@ impl UI for HighlightingUI {
       &self,
       &syntax,
       &mut iter,
-    // The optional inputs are for prefix on start of each line and
-    // returning the position of a particular character in the terminal print respectively
-      None,
-      None,
-      selection.0,
-      numbered,
-      literal,
+      print::PrintConf {
+        prefix: None,
+        cursor: None,
+        start_line: selection.0,
+        numbered: numbered,
+        literal: literal,
+        separator: true,
+      },
     ).map_err(|_| TERMINAL_WRITE)?;
     Ok(())
   }

@@ -80,8 +80,23 @@ fn print_separator(
   width: usize,
 ) -> Result<(), ErrorKind> {
   let mut sep = String::with_capacity(width);
-  for _ in 0 .. width {
-    sep.push('-');
+  let mut skip = 0;
+  for i in 0 .. width {
+    if i % 20 == 0 {
+      let num = i.to_string();
+      if i + num.len() < width {
+        skip = num.len() - 1; // -1 since we skipped one by going here
+        sep.push_str(&num);
+      } else {
+        sep.push('-');
+      }
+    }
+    else if skip > 0 {
+      skip -= 1;
+    }
+    else {
+      sep.push('-');
+    }
   }
   sep.push('\n');
   sep.push('\r');
@@ -98,16 +113,31 @@ pub struct PrintData {
   pub cursor_y: u16,
 }
 
+// Create a struct to define print settings
+pub struct PrintConf {
+  // Print prefix char at start of every line, before numbering if any
+  // Intended to support prefix at command input
+  pub prefix: Option<char>,
+  // Position (x,y in text) to leave cursor at
+  // Intended for when printing an actively edited buffer
+  pub cursor: Option<(usize, usize)>,
+  // Index in iterator from which to print
+  // Intended to feed syntax highlighter with preceding lines without printing them
+  pub start_line: usize,
+  // If true print line number at start of every line
+  pub numbered: bool,
+  // If true print like 'ed's literal print mode
+  pub literal: bool,
+  // If true print a separator before the given text
+  pub separator: bool,
+}
+
 // Uses state to print the given iterator with given syntax highlighting
 pub fn internal_print(
   state: &HighlightingUI,
   syntax: &syntect::parsing::SyntaxReference,
   text: &mut dyn Iterator<Item = &str>,
-  prefix: Option<char>,
-  cursor: Option<(usize, usize)>,
-  start_line: usize,
-  n: bool,
-  l: bool,
+  conf: PrintConf,
 ) -> Result<PrintData, ErrorKind> {
   let mut stdout = std::io::stdout();
 
@@ -125,10 +155,12 @@ pub fn internal_print(
   let mut x: u16 = 0;
   let mut y: u16 = 0;
 
-  // Print a separator from whatever came before
-  // potentially add more info to it later
-  print_separator(&mut stdout, state.term_size.0)?;
-  print_height += 1;
+  if conf.separator {
+    // Print a separator from whatever came before
+    // potentially add more info to it later
+    print_separator(&mut stdout, state.term_size.0)?;
+    print_height += 1;
+  }
 
   // Arguably one should give the highlighter all lines before the selection.
   // Otherwise it fails to understand multiline stuff over the selection edges.
@@ -148,7 +180,7 @@ pub fn internal_print(
       for ch in text.chars() {
 
         // If prefix is given, print at start of real but not wrapped lines
-        if let Some(pre) = prefix {
+        if let Some(pre) = conf.prefix {
           if i == 0 {
             reset_style(&mut stdout)?;
             let pre_len = pre.len_utf8();
@@ -159,10 +191,10 @@ pub fn internal_print(
         }
 
         // If line numbers are active, check if start of line
-        if n && (i % state.term_size.0 == 0) {
+        if conf.numbered && (i % state.term_size.0 == 0) {
           reset_style(&mut stdout)?;
           // Convert our 0-indexed int to a 1-indexed string
-          let tmp_num = (start_line + linenr + 1).to_string();
+          let tmp_num = (conf.start_line + linenr + 1).to_string();
           let tmp_num_len = tmp_num.len();
           // If this is a new line, print number
           if i == 0 {
@@ -182,7 +214,7 @@ pub fn internal_print(
         // After printing potential prefixes we check againts our given cursor, if given
         // We must check before printing ch, since printing newline resets i
         // Specifically we check if the cursor is before the current ch
-        if let Some(cur) = cursor {
+        if let Some(cur) = conf.cursor {
           if ! passed {
             if (cur.0 == linenr && cur.1 <= byte_index) || cur.0 < linenr {
               // This all means we have passed by the given cursor for the first time
@@ -202,10 +234,10 @@ pub fn internal_print(
         // If literal mode, handle edge cases
         match ch {
           '\n' => {
-            if l { stdout.queue(Print('$'))?; }
+            if conf.literal { stdout.queue(Print('$'))?; }
             i = 0;
           },
-          '$' => if l {
+          '$' => if conf.literal {
             stdout.queue(Print("\\$"))?;
             i += 2;
           } else {
