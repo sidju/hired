@@ -6,6 +6,8 @@ use crossterm::QueueableCommand;
 use crossterm::event::{KeyCode, KeyModifiers, Event};
 // And the writeable trait, to be able to flush stdout
 use std::io::Write;
+// Finally the error consts we use as error type
+use add_ed::error_consts::*;
 
 // Since unicode is weird and this method is missing from str
 // Finds the nearest char boundary preceeding given index and returns its index
@@ -32,11 +34,11 @@ pub fn event_input(
   initial_buffer: Vec<String>,
   prefix: Option<char>,
   terminator: Option<char>, // If none take only one line
-) -> Result<Vec<String>, crossterm::ErrorKind> {
+) -> Result<Vec<String>, &'static str> {
   let mut stdout = std::io::stdout();
 
   // Set the cursor to be visible, so our moves are visible
-  stdout.queue(crossterm::cursor::Show)?;
+  stdout.queue(crossterm::cursor::Show).map_err(|_| TERMINAL_READ)?;
 
   // Set up buffer and variables for moving in it
   let mut buffer = initial_buffer;
@@ -70,11 +72,13 @@ pub fn event_input(
 
     // Move up the cursor to overwrite prior input with this input
     if (dists.height - dists.cursor_y) > 0 {
-      stdout.queue(crossterm::cursor::MoveUp(dists.height - dists.cursor_y))?;
+      stdout.queue(crossterm::cursor::MoveUp(dists.height - dists.cursor_y))
+        .map_err(|_| TERMINAL_READ)?;
     }
-    stdout.queue(crossterm::cursor::MoveToColumn(0))?;
+    stdout.queue(crossterm::cursor::MoveToColumn(0)).map_err(|_| TERMINAL_READ)?;
     // Clear away old print
-    stdout.queue(crossterm::terminal::Clear(crossterm::terminal::ClearType::FromCursorDown))?;
+    stdout.queue(crossterm::terminal::Clear(crossterm::terminal::ClearType::FromCursorDown))
+      .map_err(|_| TERMINAL_READ)?;
     // Then print
     let syntax = state.syntax_lib.find_syntax_plain_text();
     dists = super::print::internal_print(
@@ -89,17 +93,17 @@ pub fn event_input(
         numbered: false,
         separator: true,
       },
-    )?;
+    ).map_err(|_| TERMINAL_READ)?;
     // And move to the positions returned
     if dists.cursor_y > 0 {
-      stdout.queue(crossterm::cursor::MoveUp(dists.cursor_y))?;
+      stdout.queue(crossterm::cursor::MoveUp(dists.cursor_y)).map_err(|_| TERMINAL_READ)?;
     }
     // We add one, since we wish the cursor to be one step beyond the last character
-    stdout.queue(crossterm::cursor::MoveToColumn(dists.cursor_x))?;
+    stdout.queue(crossterm::cursor::MoveToColumn(dists.cursor_x)).map_err(|_| TERMINAL_READ)?;
     // Then make sure to flush this, or the cursor won't move
-    stdout.flush()?;
+    stdout.flush().map_err(|_| TERMINAL_READ)?;
 
-    match crossterm::event::read()? {
+    match crossterm::event::read().map_err(|_| TERMINAL_READ)? {
       // If resize event, just update usize
       Event::Resize(x, y) => { state.term_size = (x as usize, y as usize); },
   
@@ -115,7 +119,7 @@ pub fn event_input(
         if let KeyCode::Char(_) = key.code {} else {
           partial.clear();
         }
-  
+
         // If doing anything but moving up/down, clear goal_chindex
         if (key.code != KeyCode::Up &&
           key.code != KeyCode::Down ) ||
@@ -125,6 +129,11 @@ pub fn event_input(
         }
   
         match (key.code, key.modifiers) {
+
+          // If Ctrl+C is entered, abort input and return semi error "Interrupted"
+          (KeyCode::Char('c'), KeyModifiers::CONTROL) | (KeyCode::Char('C'), KeyModifiers::CONTROL) => {
+            return Err("Interrupted!");
+          },
   
           // Start with true input; characters and deletions
           (KeyCode::Char(ch), KeyModifiers::SHIFT) | (KeyCode::Char(ch), KeyModifiers::NONE) => {
@@ -284,12 +293,13 @@ pub fn event_input(
               // First move to the indicated line, if possible
               match key.code {
                 KeyCode::Up => {
-                  lindex = lindex.saturating_sub(1);
+                  if lindex > 0 { lindex -= 1; }
+                  else { chindex = 0; }
                 },
                 KeyCode::Down => { 
                   if lindex < buffer.len() - 1 { lindex += 1; }
                   // If on last line set chindex to max, so goal_chindex keeps cursor at EOL
-                  else { chindex = usize::MAX }
+                  else { chindex = usize::MAX; }
                 },
                 _ => (),
               }
@@ -326,11 +336,13 @@ pub fn event_input(
 
   // Move up the cursor to overwrite prior input with this input
   if (dists.height - dists.cursor_y) > 0 {
-    stdout.queue(crossterm::cursor::MoveUp(dists.height - dists.cursor_y))?;
+    stdout.queue(crossterm::cursor::MoveUp(dists.height - dists.cursor_y))
+      .map_err(|_| TERMINAL_READ)?;
   }
-  stdout.queue(crossterm::cursor::MoveToColumn(0))?;
+  stdout.queue(crossterm::cursor::MoveToColumn(0)).map_err(|_| TERMINAL_READ)?;
   // Clear away old print
-  stdout.queue(crossterm::terminal::Clear(crossterm::terminal::ClearType::FromCursorDown))?;
+  stdout.queue(crossterm::terminal::Clear(crossterm::terminal::ClearType::FromCursorDown))
+    .map_err(|_| TERMINAL_READ)?;
   // Then print
   let syntax = state.syntax_lib.find_syntax_plain_text();
   super::print::internal_print(
@@ -345,8 +357,8 @@ pub fn event_input(
       literal: false,
       separator: true,
     },
-  )?;
+  ).map_err(|_| TERMINAL_READ)?;
   // Then flush and return
-  stdout.flush()?;
+  stdout.flush().map_err(|_| TERMINAL_READ)?;
   Ok(buffer)
 }

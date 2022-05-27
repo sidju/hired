@@ -14,7 +14,6 @@ fn main() {
   syntect::dumps::dump_to_file(&mut syntaxes, "assets/compressed_syntaxes").unwrap();
 
 
-
   // Define to recreate when the theme is changed
   println!("cargo:rerun-if-changed=assets/theme.xml");
 

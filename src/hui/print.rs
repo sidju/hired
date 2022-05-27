@@ -244,6 +244,11 @@ pub fn internal_print(
             stdout.queue(Print('$'))?;
             i += 1;
           },
+          '\t' => {
+            if conf.literal { stdout.queue(Print("--->"))?; }
+            else { stdout.queue(Print("    "))?; }
+            i += 4;
+          },
           c => {
             stdout.queue(Print(c))?;
             i += 1;

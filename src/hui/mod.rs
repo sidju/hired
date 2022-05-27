@@ -61,8 +61,7 @@ impl UI for HighlightingUI {
         Vec::new(),
         prefix,
         None, // We want one line specifically
-      )
-        .map_err(|_| TERMINAL_READ)?
+      )?
         .remove(0)
     ;
     self.command_history.push(command.clone());
@@ -80,7 +79,6 @@ impl UI for HighlightingUI {
       None, // No line prefix for input
       Some(terminator)
     )
-      .map_err(|_| TERMINAL_READ)
   }
   fn print_selection(
     &mut self,
