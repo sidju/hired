@@ -173,7 +173,8 @@ pub fn internal_print(
     let mut byte_index = 0;
 
     // Highlight the line first
-    let highlighted = highlighter.highlight(line, &state.syntax_lib);
+    let highlighted = highlighter.highlight_line(line, &state.syntax_lib)
+      .unwrap(); // TODO: this should be handled, requires change of error type
     // Iterate over syntactic segments, setting the style for each
     for (style, text) in highlighted {
       apply_style(style, &mut stdout)?;
@@ -193,8 +194,8 @@ pub fn internal_print(
         // If line numbers are active, check if start of line
         if conf.numbered && (i % state.term_size.0 == 0) {
           reset_style(&mut stdout)?;
-          // Convert our 0-indexed int to a 1-indexed string
-          let tmp_num = (conf.start_line + linenr + 1).to_string();
+          // Calculate number and convert to string
+          let tmp_num = (conf.start_line + linenr).to_string();
           let tmp_num_len = tmp_num.len();
           // If this is a new line, print number
           if i == 0 {

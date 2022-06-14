@@ -75,7 +75,7 @@ pub fn event_input(
       stdout.queue(crossterm::cursor::MoveUp(dists.height - dists.cursor_y))
         .map_err(|_| TERMINAL_READ)?;
     }
-    stdout.queue(crossterm::cursor::MoveToColumn(0)).map_err(|_| TERMINAL_READ)?;
+    stdout.queue(crossterm::cursor::MoveToColumn(1)).map_err(|_| TERMINAL_READ)?;
     // Clear away old print
     stdout.queue(crossterm::terminal::Clear(crossterm::terminal::ClearType::FromCursorDown))
       .map_err(|_| TERMINAL_READ)?;
@@ -339,7 +339,7 @@ pub fn event_input(
     stdout.queue(crossterm::cursor::MoveUp(dists.height - dists.cursor_y))
       .map_err(|_| TERMINAL_READ)?;
   }
-  stdout.queue(crossterm::cursor::MoveToColumn(0)).map_err(|_| TERMINAL_READ)?;
+  stdout.queue(crossterm::cursor::MoveToColumn(1)).map_err(|_| TERMINAL_READ)?;
   // Clear away old print
   stdout.queue(crossterm::terminal::Clear(crossterm::terminal::ClearType::FromCursorDown))
     .map_err(|_| TERMINAL_READ)?;

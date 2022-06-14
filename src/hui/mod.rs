@@ -37,9 +37,8 @@ impl HighlightingUI {
 use std::io::Write; // Needed for the queue and flush functions on stdout
 
 impl UI for HighlightingUI {
-  fn print(
+  fn print_message(
     &mut self,
-    _ed: EdState,
     text: &str,
   ) -> Result<(), &'static str> {
     use crossterm::style::Print;
