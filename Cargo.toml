@@ -1,7 +1,7 @@
 [package]
 name = "hired"
 description = "Highlighting rust clone of ed"
-version = "0.9.0-alpha2"
+version = "0.9.0-alpha3"
 homepage = "https://github.com/sidju/hired"
 repository = "https://github.com/sidju/hired"
 readme = "README.md"
@@ -21,7 +21,7 @@ include = [
 debug = []
 
 [dependencies]
-add-ed = { version = "0.9.0-alpha5", features = ["vecbuffer", "initial_input_data"] }
+add-ed = { version = "0.9.0-alpha6", features = ["vecbuffer", "initial_input_data"] }
 syntect = { version = "5", default-features = false, features = [
   "regex-fancy", # use rust regex
   "dump-load", # for loading the compressed dump created by build.rs
