@@ -84,7 +84,7 @@ pub fn event_input(
     dists = super::print::internal_print(
       state,
       &syntax,
-      &mut buffer.iter().map(|line| &line[..]),
+      &mut buffer.iter().map(|line| ('\0', &line[..])),
       super::print::PrintConf {
         prefix: prefix,
         cursor: Some((lindex, chindex)),
@@ -348,7 +348,7 @@ pub fn event_input(
   super::print::internal_print(
     state,
     &syntax,
-    &mut buffer.iter().map(|line| &line[..]),
+    &mut buffer.iter().map(|line| ('\0', &line[..])),
     super::print::PrintConf {
       prefix: prefix,
       cursor: None,

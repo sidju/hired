@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "add-ed"
-version = "0.9.0-alpha3"
+version = "0.9.0-alpha5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64cb96034ba9e767e4ff5b689f8e4c5c571fa8a0f387636e0e1c78ca59b7a337"
+checksum = "b472da9864fc55fe1c9b7f93893433b091eb6e8b5cec7ab5f2439c106542aa9a"
 dependencies = [
  "regex",
 ]

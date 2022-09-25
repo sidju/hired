@@ -136,7 +136,7 @@ pub struct PrintConf {
 pub fn internal_print(
   state: &HighlightingUI,
   syntax: &syntect::parsing::SyntaxReference,
-  text: &mut dyn Iterator<Item = &str>,
+  text: &mut dyn Iterator<Item = (char, &str)>,
   conf: PrintConf,
 ) -> Result<PrintData, ErrorKind> {
   let mut stdout = std::io::stdout();
@@ -173,7 +173,7 @@ pub fn internal_print(
     let mut byte_index = 0;
 
     // Highlight the line first
-    let highlighted = highlighter.highlight_line(line, &state.syntax_lib)
+    let highlighted = highlighter.highlight_line(line.1, &state.syntax_lib)
       .unwrap(); // TODO: this should be handled, requires change of error type
     // Iterate over syntactic segments, setting the style for each
     for (style, text) in highlighted {
@@ -196,10 +196,18 @@ pub fn internal_print(
           reset_style(&mut stdout)?;
           // Calculate number and convert to string
           let tmp_num = (conf.start_line + linenr).to_string();
-          let tmp_num_len = tmp_num.len();
+          let tmp_num_len = tmp_num.len(); // Only works because linenr is ascii
           // If this is a new line, print number
           if i == 0 {
-            stdout.queue(Print(tmp_num))?;
+            // If no line tag, print number
+            if line.0 == '\0' {
+              stdout.queue(Print(tmp_num))?;
+            }
+            // Else print the tag instead 
+            else {
+              stdout.queue(Print(line.0))?;
+              for _ in 1 .. tmp_num_len { stdout.queue(Print(' '))?; }
+            }
           }
           // If a wrapped line, print inwards offset equal to the numbering
           else {
