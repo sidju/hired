@@ -26,3 +26,11 @@ the commands.
 This project has of course greatly benefited from all the crates it depends on. Especially I'd like to thank regex and syntect for helping me through my, to various degrees badly though out, issues.
 
 Then I have also gotten a hand up from 'bat', which I also consider an excellent companion to this application, from their handling of 16-color terminals. My theme is currently copied from their repo and will probably always be based on theirs.
+
+## Build:
+
+```sh
+git clone --recurse-submodules https://github.com/sidju/hired # or `gh repo clone sidju/hired -- --recurse-submodules`
+cd hired
+cargo build # if `--recurse-submodeuls` was omitted, no highlights will be available.
+```
