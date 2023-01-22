@@ -30,7 +30,11 @@ Then I have also gotten a hand up from 'bat', which I also consider an excellent
 ## Build:
 
 ```sh
-git clone --recurse-submodules https://github.com/sidju/hired # or `gh repo clone sidju/hired -- --recurse-submodules`
+git clone --recurse-submodules https://github.com/sidju/hired
 cd hired
-cargo build # if `--recurse-submodeuls` was omitted, no highlights will be available.
+cargo build
 ```
+
+Things to note:
+- run `gh repo clone sidju/hired -- --recurse-submodules` instead of `git clone` in case using [GitHub's CLI](https://github.com/cli/cli)
+- if `--recurse-submodeuls` was omitted, no highlights would be available
