@@ -5,8 +5,9 @@ const SYNTAXES: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/compressed_syn
 // All UI abtractions
 mod hui;
 
+use add_ed::ui::UI;
+use add_ed::error_consts::DISABLE_RAWMODE;
 use clap::Parser;
-use std::collections::HashMap;
 
 /// hired, the highlighting EDitor
 #[derive(Parser)]
@@ -27,24 +28,38 @@ pub fn main() {
   // We start by handling command line input
   let args = Args::parse();
   
-  // Use the parsed input to configure UI and editor
-  let path = args.path;
-
   // Construct editor
-  let mut buffer = add_ed::buffer::VecBuffer::new();
+  let mut buffer = add_ed::buffer::Buffer::new();
   let mut ui = hui::HighlightingUI::new();
-  // Empty hash map, since we have no support for reading in macro config yet
-  let mut ed = add_ed::Ed::new(&mut buffer, path, HashMap::new(), args.n, args.l).expect("Failed to open file.");
+  let mut io = add_ed::io::LocalIO::new();
+  let mut ed = add_ed::Ed::new(&mut buffer, &mut io, args.path);
+  ed.n = args.n;
+  ed.l = args.l;
 
-  // Start raw mode after opening file, to not use .expect() when in raw mode
+  // Start raw mode before using HighlightingUI
+  // Avoid using .unwrap(), .expect() or panic!() when in raw mode, as it leaves
+  // the terminal in an unusable state for bash.
   crossterm::terminal::enable_raw_mode().expect("Failed to configure terminal.");
+
+  // Before normal execution, run a command to open the given path
+  let res = ed.run_command(&mut ui, "e");
+  // If we failed to open file for some reason, print that error
+  if let Err(e) = res {
+    let res2 = ui.print_message( if ed.print_errors { e } else { "?\n" } );
+    // If we cannot print, clear raw mode and panic
+    if let Err(_) = res2 {
+      crossterm::terminal::disable_raw_mode()
+        .expect(DISABLE_RAWMODE);
+      res2.unwrap();
+    }
+  }
 
   // Run the editor, saving result
   let res = ed.run(&mut ui);
 
   // Clear out raw mode before reacting to result
   crossterm::terminal::disable_raw_mode()
-    .expect("Failed to clear raw mode. Run 'reset' to fix terminal.");
+    .expect(DISABLE_RAWMODE);
 
   res.unwrap();
 }

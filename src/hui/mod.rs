@@ -8,7 +8,10 @@ use super::THEME;
 use super::SYNTAXES;
 
 // use the UI trait, to implement it
-use add_ed::ui::UI;
+use add_ed::ui::{
+  UI,
+  UILock,
+};
 use add_ed::EdState;
 use add_ed::error_consts::*;
 
@@ -88,7 +91,7 @@ impl UI for HighlightingUI {
   ) -> Result<(), &'static str> {
     // First we get the data needed to call the internal function
     let mut iter = ed.buffer.get_selection(selection)?;
-    let syntax = self.syntax_lib.find_syntax_for_file(ed.path)
+    let syntax = self.syntax_lib.find_syntax_for_file(ed.file)
       .unwrap_or(None)
       .unwrap_or_else(|| self.syntax_lib.find_syntax_plain_text());
     // Then we call the internal print
@@ -106,5 +109,17 @@ impl UI for HighlightingUI {
       },
     ).map_err(|_| TERMINAL_WRITE)?;
     Ok(())
+  }
+  fn lock_ui(&mut self) -> UILock {
+    // Before handing over to shell escaped commands we need to disable raw mode
+    crossterm::terminal::disable_raw_mode()
+      .expect(DISABLE_RAWMODE)
+    ;
+    UILock::new(self)
+  }
+  fn unlock_ui(&mut self) {
+    // Re-enable raw mode, to go back to using the UI
+    crossterm::terminal::enable_raw_mode()
+      .expect("Failed to re-enable raw mode, UI cannot resume, dying")
   }
 }

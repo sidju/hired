@@ -75,7 +75,7 @@ pub fn event_input(
       stdout.queue(crossterm::cursor::MoveUp(dists.height - dists.cursor_y))
         .map_err(|_| TERMINAL_READ)?;
     }
-    stdout.queue(crossterm::cursor::MoveToColumn(1)).map_err(|_| TERMINAL_READ)?;
+    stdout.queue(crossterm::cursor::MoveToColumn(0)).map_err(|_| TERMINAL_READ)?;
     // Clear away old print
     stdout.queue(crossterm::terminal::Clear(crossterm::terminal::ClearType::FromCursorDown))
       .map_err(|_| TERMINAL_READ)?;
@@ -98,8 +98,9 @@ pub fn event_input(
     if dists.cursor_y > 0 {
       stdout.queue(crossterm::cursor::MoveUp(dists.cursor_y)).map_err(|_| TERMINAL_READ)?;
     }
-    // We add one, since we wish the cursor to be one step beyond the last character
-    stdout.queue(crossterm::cursor::MoveToColumn(dists.cursor_x)).map_err(|_| TERMINAL_READ)?;
+    // Subtract one, because MoveToColumn is 0 indexed
+    stdout.queue(crossterm::cursor::MoveToColumn(dists.cursor_x.saturating_sub(1)))
+      .map_err(|_| TERMINAL_READ)?;
     // Then make sure to flush this, or the cursor won't move
     stdout.flush().map_err(|_| TERMINAL_READ)?;
 
@@ -109,6 +110,9 @@ pub fn event_input(
   
       // Ignore mouse events
       Event::Mouse(_) => (),
+
+      // Ignore focus events
+      Event::FocusGained | Event::FocusLost => (),
   
       // If key event, match code and modifiers and handle thereafter
       Event::Key(key) => {
@@ -339,7 +343,7 @@ pub fn event_input(
     stdout.queue(crossterm::cursor::MoveUp(dists.height - dists.cursor_y))
       .map_err(|_| TERMINAL_READ)?;
   }
-  stdout.queue(crossterm::cursor::MoveToColumn(1)).map_err(|_| TERMINAL_READ)?;
+  stdout.queue(crossterm::cursor::MoveToColumn(0)).map_err(|_| TERMINAL_READ)?;
   // Clear away old print
   stdout.queue(crossterm::terminal::Clear(crossterm::terminal::ClearType::FromCursorDown))
     .map_err(|_| TERMINAL_READ)?;
