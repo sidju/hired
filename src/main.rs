@@ -6,7 +6,10 @@ const SYNTAXES: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/compressed_syn
 mod hui;
 
 use add_ed::ui::UI;
-use add_ed::error_consts::DISABLE_RAWMODE;
+use add_ed::error_consts::{
+  DISABLE_RAWMODE,
+  TERMINAL_WRITE,
+};
 use clap::Parser;
 
 /// hired, the highlighting EDitor
@@ -40,6 +43,11 @@ pub fn main() {
   // Avoid using .unwrap(), .expect() or panic!() when in raw mode, as it leaves
   // the terminal in an unusable state for bash.
   crossterm::terminal::enable_raw_mode().expect("Failed to configure terminal.");
+
+  // Handle if hired is started not on column 0 (for example git may do this)
+  if crossterm::cursor::position().expect(TERMINAL_WRITE).0 != 0 {
+    print!("\n\r");
+  }
 
   // Before normal execution, run a command to open the given path
   let res = ed.run_command(&mut ui, "e");
