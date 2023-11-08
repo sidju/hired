@@ -1,7 +1,7 @@
 [package]
 name = "hired"
 description = "Highlighting rust clone of ed"
-version = "0.10.0"
+version = "0.11.0"
 homepage = "https://github.com/sidju/hired"
 repository = "https://github.com/sidju/hired"
 readme = "README.md"
@@ -21,14 +21,16 @@ include = [
 debug = []
 
 [dependencies]
-add-ed = { version = "0.10", features = ["local_io","initial_input_data"] }
-syntect = { version = "5", default-features = false, features = [
+add-ed = { version = "0.11", features = ["local_io","initial_input_data"] }
+syntect = { version = "5.1", default-features = false, features = [
   "regex-fancy", # use rust regex
   "parsing", # Includes loading the compressed dump created by build.rs
 ] }
 # Avoid having support for bracketed paste = treat pasted input same as normal
-crossterm = { version = "0.26", default-features = false }
-clap = { version = "4", features = ["derive", "env"] }
+crossterm = { version = "0.27", default-features = false, features = [
+  "events"
+]}
+clap = { version = "4.4", features = ["derive", "env"] }
 
 [build-dependencies]
-syntect = { version = "5" } # Onigura regex engine better handles inconsistencies in the syntax files
+syntect = { version = "5.1" } # Onigura regex engine better handles inconsistencies in the syntax files

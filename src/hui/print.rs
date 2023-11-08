@@ -3,13 +3,12 @@ use super::HighlightingUI;
 
 use crossterm::{
   QueueableCommand,
-  ErrorKind,
   style::{
     Print,
     Color,
   }
 };
-use std::io::Write; // Needs to be used in for queue and flush
+use std::io::{Result, Write}; // Needs to be used in for queue and flush
 
 // Create some printing helpers
 fn syntect_to_crossterm_color(
@@ -46,7 +45,7 @@ fn syntect_to_crossterm_color(
 fn apply_style(
   style: syntect::highlighting::Style,
   out: &mut impl Write,
-) -> Result<(), ErrorKind> {
+) -> Result<()> {
   use syntect::highlighting::FontStyle;
   use crossterm::style::{SetColors, SetAttribute, Colors, Attribute};
 
@@ -69,7 +68,7 @@ fn apply_style(
   }
   Ok(())
 }
-fn reset_style(out: &mut impl Write) -> Result<(), ErrorKind> {
+fn reset_style(out: &mut impl Write) -> Result<()> {
   use crossterm::style::{ResetColor, SetAttribute, Attribute};
   out.queue(ResetColor)?;
   out.queue(SetAttribute(Attribute::Reset))?;
@@ -78,7 +77,7 @@ fn reset_style(out: &mut impl Write) -> Result<(), ErrorKind> {
 fn print_separator(
   out: &mut impl Write,
   width: usize,
-) -> Result<(), ErrorKind> {
+) -> Result<()> {
   let mut sep = String::with_capacity(width);
   let mut skip = 0;
   for i in 0 .. width {
@@ -138,7 +137,7 @@ pub fn internal_print(
   syntax: &syntect::parsing::SyntaxReference,
   text: &mut dyn Iterator<Item = (char, &str)>,
   conf: PrintConf,
-) -> Result<PrintData, ErrorKind> {
+) -> Result<PrintData> {
   let mut stdout = std::io::stdout();
 
   let theme = &state.theme;

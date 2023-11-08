@@ -12,11 +12,18 @@ use add_ed::ui::{
   UI,
   UILock,
 };
-use add_ed::EdState;
-use add_ed::error_consts::*;
+use add_ed::{
+  Ed,
+  error::{
+    Result,
+    EdError,
+  },
+};
 
 mod print;
 mod input;
+pub mod error;
+use error::HighlightingUIError as HUIError;
 
 pub struct HighlightingUI {
   syntax_lib: SyntaxSet,
@@ -43,27 +50,39 @@ impl UI for HighlightingUI {
   fn print_message(
     &mut self,
     text: &str,
-  ) -> Result<(), &'static str> {
-    use crossterm::style::Print;
-    let mut stdout = stdout();
-    for line in text.lines() {
-      stdout.queue(Print(line)).map_err(|_| TERMINAL_WRITE)?;
-      stdout.queue(Print("\n\r")).map_err(|_| TERMINAL_WRITE)?;
-    }
-    stdout.flush().map_err(|_| TERMINAL_WRITE)?;
-    Ok(())
+  ) -> Result<()> {
+    (|| -> std::io::Result<()> {
+      use crossterm::style::Print;
+      let mut stdout = stdout();
+      for line in text.lines() {
+        stdout.queue(Print(line))?;
+        stdout.queue(Print("\n\r"))?;
+      }
+      stdout.flush()?;
+      Ok(())
+    })()
+      .map_err(HUIError::TerminalIOFailed)
+      .map_err(add_ed::error::UIError::from)
+      .map_err(EdError::UI)
+  }
+  fn print_commands(&mut self) -> Result<()> {
+    todo!()
+  }
+  fn print_command_documentation(&mut self) -> Result<()> {
+    todo!()
   }
   fn get_command(
     &mut self,
-    _ed: EdState,
+    _ed: &Ed,
     prefix: Option<char>,
-  ) -> Result<String, &'static str> {
+  ) -> Result<String> {
     let command = input::event_input(
         self,
         Vec::new(),
         prefix,
         None, // We want one line specifically
-      )?
+      )
+        .map_err(|e|add_ed::EdError::UI(e.into()))?
         .remove(0)
     ;
     self.command_history.push(command.clone());
@@ -71,27 +90,28 @@ impl UI for HighlightingUI {
   }
   fn get_input(
     &mut self,
-    _ed: EdState,
+    _ed: &Ed,
     terminator: char,
     initial_buffer: Option<Vec<String>>,
-  ) -> Result<Vec<String>, &'static str> {
+  ) -> Result<Vec<String>> {
     input::event_input(
       self,
       initial_buffer.unwrap_or(Vec::new()),
       None, // No line prefix for input
       Some(terminator)
     )
+      .map_err(|e|add_ed::EdError::UI(e.into()))
   }
   fn print_selection(
     &mut self,
-    ed: EdState,
+    ed: &Ed,
     selection: (usize, usize),
     numbered: bool,
     literal: bool,
-  ) -> Result<(), &'static str> {
+  ) -> Result<()> {
     // First we get the data needed to call the internal function
-    let mut iter = ed.buffer.get_selection(selection)?;
-    let syntax = self.syntax_lib.find_syntax_for_file(ed.file)
+    let mut iter = ed.history.current().get_tagged_lines(selection)?;
+    let syntax = self.syntax_lib.find_syntax_for_file(&ed.file)
       .unwrap_or(None)
       .unwrap_or_else(|| self.syntax_lib.find_syntax_plain_text());
     // Then we call the internal print
@@ -107,19 +127,25 @@ impl UI for HighlightingUI {
         literal: literal,
         separator: true,
       },
-    ).map_err(|_| TERMINAL_WRITE)?;
+    )
+      .map_err(HUIError::TerminalIOFailed)
+      .map_err(add_ed::error::UIError::from)
+    ?;
     Ok(())
   }
   fn lock_ui(&mut self) -> UILock {
     // Before handing over to shell escaped commands we need to disable raw mode
     crossterm::terminal::disable_raw_mode()
-      .expect(DISABLE_RAWMODE)
+      .map_err(HUIError::RawmodeSwitchFailed)
+      .unwrap()
     ;
     UILock::new(self)
   }
   fn unlock_ui(&mut self) {
     // Re-enable raw mode, to go back to using the UI
     crossterm::terminal::enable_raw_mode()
-      .expect("Failed to re-enable raw mode, UI cannot resume, dying")
+      .map_err(HUIError::RawmodeSwitchFailed)
+      .unwrap()
+    ;
   }
 }

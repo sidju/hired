@@ -7,7 +7,8 @@ use crossterm::event::{KeyCode, KeyModifiers, Event};
 // And the writeable trait, to be able to flush stdout
 use std::io::Write;
 // Finally the error consts we use as error type
-use add_ed::error_consts::*;
+use super::HUIError;
+type Result<T> = std::result::Result<T, HUIError>;
 
 // Since unicode is weird and this method is missing from str
 // Finds the nearest char boundary preceeding given index and returns its index
@@ -34,11 +35,11 @@ pub fn event_input(
   initial_buffer: Vec<String>,
   prefix: Option<char>,
   terminator: Option<char>, // If none take only one line
-) -> Result<Vec<String>, &'static str> {
+) -> Result<Vec<String>> {
   let mut stdout = std::io::stdout();
 
   // Set the cursor to be visible, so our moves are visible
-  stdout.queue(crossterm::cursor::Show).map_err(|_| TERMINAL_READ)?;
+  stdout.queue(crossterm::cursor::Show).map_err(HUIError::TerminalIOFailed)?;
 
   // Set up buffer and variables for moving in it
   let mut buffer = initial_buffer;
@@ -73,12 +74,12 @@ pub fn event_input(
     // Move up the cursor to overwrite prior input with this input
     if (dists.height - dists.cursor_y) > 0 {
       stdout.queue(crossterm::cursor::MoveUp(dists.height - dists.cursor_y))
-        .map_err(|_| TERMINAL_READ)?;
+        .map_err(HUIError::TerminalIOFailed)?;
     }
-    stdout.queue(crossterm::cursor::MoveToColumn(0)).map_err(|_| TERMINAL_READ)?;
+    stdout.queue(crossterm::cursor::MoveToColumn(0)).map_err(HUIError::TerminalIOFailed)?;
     // Clear away old print
     stdout.queue(crossterm::terminal::Clear(crossterm::terminal::ClearType::FromCursorDown))
-      .map_err(|_| TERMINAL_READ)?;
+      .map_err(HUIError::TerminalIOFailed)?;
     // Then print
     let syntax = state.syntax_lib.find_syntax_plain_text();
     dists = super::print::internal_print(
@@ -93,18 +94,18 @@ pub fn event_input(
         numbered: false,
         separator: true,
       },
-    ).map_err(|_| TERMINAL_READ)?;
+    ).map_err(HUIError::TerminalIOFailed)?;
     // And move to the positions returned
     if dists.cursor_y > 0 {
-      stdout.queue(crossterm::cursor::MoveUp(dists.cursor_y)).map_err(|_| TERMINAL_READ)?;
+      stdout.queue(crossterm::cursor::MoveUp(dists.cursor_y)).map_err(HUIError::TerminalIOFailed)?;
     }
     // Subtract one, because MoveToColumn is 0 indexed
     stdout.queue(crossterm::cursor::MoveToColumn(dists.cursor_x.saturating_sub(1)))
-      .map_err(|_| TERMINAL_READ)?;
+      .map_err(HUIError::TerminalIOFailed)?;
     // Then make sure to flush this, or the cursor won't move
-    stdout.flush().map_err(|_| TERMINAL_READ)?;
+    stdout.flush().map_err(HUIError::TerminalIOFailed)?;
 
-    match crossterm::event::read().map_err(|_| TERMINAL_READ)? {
+    match crossterm::event::read().map_err(HUIError::TerminalIOFailed)? {
       // If resize event, just update usize
       Event::Resize(x, y) => { state.term_size = (x as usize, y as usize); },
   
@@ -136,7 +137,7 @@ pub fn event_input(
 
           // If Ctrl+C is entered, abort input and return semi error "Interrupted"
           (KeyCode::Char('c'), KeyModifiers::CONTROL) | (KeyCode::Char('C'), KeyModifiers::CONTROL) => {
-            return Err("Interrupted!");
+            return Err(HUIError::Interrupted.into());
           },
   
           // Start with true input; characters and deletions
@@ -341,12 +342,12 @@ pub fn event_input(
   // Move up the cursor to overwrite prior input with this input
   if (dists.height - dists.cursor_y) > 0 {
     stdout.queue(crossterm::cursor::MoveUp(dists.height - dists.cursor_y))
-      .map_err(|_| TERMINAL_READ)?;
+      .map_err(HUIError::TerminalIOFailed)?;
   }
-  stdout.queue(crossterm::cursor::MoveToColumn(0)).map_err(|_| TERMINAL_READ)?;
+  stdout.queue(crossterm::cursor::MoveToColumn(0)).map_err(HUIError::TerminalIOFailed)?;
   // Clear away old print
   stdout.queue(crossterm::terminal::Clear(crossterm::terminal::ClearType::FromCursorDown))
-    .map_err(|_| TERMINAL_READ)?;
+    .map_err(HUIError::TerminalIOFailed)?;
   // Then print
   let syntax = state.syntax_lib.find_syntax_plain_text();
   super::print::internal_print(
@@ -361,8 +362,8 @@ pub fn event_input(
       literal: false,
       separator: true,
     },
-  ).map_err(|_| TERMINAL_READ)?;
+  ).map_err(HUIError::TerminalIOFailed)?;
   // Then flush and return
-  stdout.flush().map_err(|_| TERMINAL_READ)?;
+  stdout.flush().map_err(HUIError::TerminalIOFailed)?;
   Ok(buffer)
 }
