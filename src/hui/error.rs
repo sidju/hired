@@ -7,6 +7,8 @@ pub enum HighlightingUIError {
   TerminalIOFailed(std::io::Error),
   // Received Ctrl+c, aborting input and returning to editor.
   Interrupted,
+  // Terminal not wide enough to print docs
+  DocInsufficientWidth(termimad::InsufficientWidthError),
 }
 impl std::fmt::Display for HighlightingUIError {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -34,8 +36,26 @@ impl std::fmt::Display for HighlightingUIError {
       HE::Interrupted => {
         write!(f, "Interrupted!")
       },
+      HE::DocInsufficientWidth(e) => {
+        write!(f,
+          concat!(
+            "Failed to render documentation.\n\n",
+            "Underlying error: {}",
+          ),
+          e
+        )
+      },
     }
   }
 }
 impl std::error::Error for HighlightingUIError{}
 impl add_ed::error::UIErrorTrait for HighlightingUIError{}
+impl HighlightingUIError {
+  pub fn from_termimad(e: termimad::Error) -> Self {
+    use termimad::Error as TE;
+    match e {
+      TE::IO(inner) => Self::TerminalIOFailed(inner),
+      TE::InsufficientWidth(inner) => Self::DocInsufficientWidth(inner),
+    }
+  }
+}

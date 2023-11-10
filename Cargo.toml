@@ -18,10 +18,10 @@ include = [
 ]
 
 [features]
-debug = []
 
 [dependencies]
 add-ed = { version = "0.11", features = ["local_io","initial_input_data"] }
+termimad = "0.26"
 syntect = { version = "5.1", default-features = false, features = [
   "regex-fancy", # use rust regex
   "parsing", # Includes loading the compressed dump created by build.rs

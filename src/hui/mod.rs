@@ -21,6 +21,7 @@ use add_ed::{
 };
 
 mod print;
+mod doc_print;
 mod input;
 pub mod error;
 use error::HighlightingUIError as HUIError;
@@ -35,6 +36,9 @@ impl HighlightingUI {
   pub fn new() -> Self {
     let theme: Theme = syntect::dumps::from_binary(THEME);
     let syntax: SyntaxSet = syntect::dumps::from_binary(SYNTAXES);
+    let mut doc_area = termimad::Area::full_screen();
+    // Pad so the first two lines aren't scrolled off screen on normal doc print
+    doc_area.pad(0,20);
     Self{
       syntax_lib: syntax,
       theme: theme,
@@ -66,10 +70,16 @@ impl UI for HighlightingUI {
       .map_err(EdError::UI)
   }
   fn print_commands(&mut self) -> Result<()> {
-    todo!()
+    doc_print::display_doc(add_ed::messages::COMMAND_LIST.into())
+      .map_err(HUIError::from_termimad)
+      .map_err(add_ed::error::UIError::from)
+      .map_err(EdError::UI)
   }
   fn print_command_documentation(&mut self) -> Result<()> {
-    todo!()
+    doc_print::display_doc(add_ed::messages::COMMAND_DOCUMENTATION.into())
+      .map_err(HUIError::from_termimad)
+      .map_err(add_ed::error::UIError::from)
+      .map_err(EdError::UI)
   }
   fn get_command(
     &mut self,
