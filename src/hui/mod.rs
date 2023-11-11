@@ -36,9 +36,6 @@ impl HighlightingUI {
   pub fn new() -> Self {
     let theme: Theme = syntect::dumps::from_binary(THEME);
     let syntax: SyntaxSet = syntect::dumps::from_binary(SYNTAXES);
-    let mut doc_area = termimad::Area::full_screen();
-    // Pad so the first two lines aren't scrolled off screen on normal doc print
-    doc_area.pad(0,20);
     Self{
       syntax_lib: syntax,
       theme: theme,
