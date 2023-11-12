@@ -1,0 +1,51 @@
+# The default configuration profile
+default:
+
+# Example `hired` configuration profile
+# The commented out values are the defaults
+example:
+  # Default path
+  #path: ""
+  path: "note.md"
+
+  # Default state for printing flags
+  #n: false
+  n: true
+  #l: false
+  l: true
+
+  # Macro definitions
+  #macros: {}
+  macros:
+    # Example macro entry with specific nr of arguments
+    grep:
+      input: "g/$1/p/"
+      nr_arguments:
+        exactly: 1
+    # Example macro entry without arguments
+    # (Note how it doesn't need to double the $ thanks to specifying no arguments)
+    mkpdir:
+      input: "!mkdir -p $(dirname %)"
+      nr_arguments: none
+    # Example macro entry with any nr of arguments
+    fmt:
+      input: "|fmt $0"
+      nr_arguments: any
+    # Example macro with a span of valid nr of arguments
+    echo2to5:
+      # Arguments not given inserted as empty string
+      input: "!echo $1 $2 $3 $4 $5"
+      nr_arguments:
+        between:
+          incl_min: 2
+          incl_max: 5
+    # And another to show of that you can import other parts of the same file,
+    # which is mainly useful for sharing macros between profiles. You can share
+    # the whole macro section if you wish.
+    # Here we tag the data under original as `foo`
+    original: &foo
+      input: '!echo I am unique\!'
+      nr_arguments: none
+    # Here we import all the data from the tag `foo`
+    copy:
+      <<: *foo

@@ -26,7 +26,7 @@ use std::io::Write;
 
 fn view_area() -> Area {
   let mut a = Area::full_screen();
-  a.pad_for_max_width(80);
+  a.pad_for_max_width(120);
   a
 }
 

@@ -1,41 +1,35 @@
+
+
 // Import the highlighting theme
 const THEME: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/compressed_theme"));
 const SYNTAXES: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/compressed_syntaxes"));
+
+mod config;
+use config::construct_config;
+mod macro_store;
 
 // All UI abtractions
 mod hui;
 use hui::error::HighlightingUIError as HUIError;
 
 use add_ed::ui::UI;
-use clap::Parser;
-
-/// hired, the highlighting EDitor
-#[derive(Parser)]
-#[clap(version, about)]
-struct Args {
-  /// path to the file to open
-  #[clap(value_parser, default_value = "")]
-  path: String,
-  /// default to printing with line numbers
-  #[clap(action, short)]
-  n: bool,
-  /// default to printing in literal mode
-  #[clap(action, short)]
-  l: bool,
-}
 
 pub fn main() {
-  // We start by handling command line input
-  let args = Args::parse();
+  // Parse CLI arguments, env and config file into a run configuration
+  // (This will abort execution in a lot of cases, so it must be ran before
+  // enabling raw mode)
+  let config = construct_config();
   
   // Construct editor
   let mut ui = hui::HighlightingUI::new();
   let mut io = add_ed::io::LocalIO::new();
-  // Create a temporary macro store, a proper one TBD
-  let macro_store = std::collections::HashMap::new();
+  // Create our macro store
+  let macro_store = macro_store::MacroStore{
+    config_macros: &config.macros,
+  };
   let mut ed = add_ed::Ed::new(&mut io, &macro_store);
-  ed.n = args.n;
-  ed.l = args.l;
+  ed.n = config.n;
+  ed.l = config.l;
 
   // Start raw mode before using HighlightingUI
   // Avoid using .unwrap(), .expect() or panic!() when in raw mode, as it leaves
@@ -55,7 +49,7 @@ pub fn main() {
     ;
     if pos.0 != 0 { print!("\n\r"); }
 
-    let res = ed.run_command(&mut ui, &format!("e{}", args.path));
+    let res = ed.run_command(&mut ui, &format!("e{}", config.path));
     if let Err(e) = res {
       ui.print_message(&format!("{}", e))?;
     }
