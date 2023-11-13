@@ -1,7 +1,7 @@
 [package]
 name = "hired"
 description = "Highlighting rust clone of ed"
-version = "0.11.0"
+version = "0.11.1"
 homepage = "https://github.com/sidju/hired"
 repository = "https://github.com/sidju/hired"
 readme = "README.md"
@@ -26,7 +26,8 @@ add-ed = { version = "0.13", features = ["local_io","initial_input_data","serde"
 # Terminal interaction library, to manage key events and cursor position
 # Avoid having support for bracketed paste = treat pasted input same as normal
 crossterm = { version = "0.27", default-features = false, features = [
-  "events"
+  "events",
+  "windows",
 ]}
 
 # Syntax highlighting
