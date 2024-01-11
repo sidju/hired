@@ -17,7 +17,7 @@ fn syntect_to_crossterm_color(
   // If alpha value is zero the red value is which 16 color to use
   if c.a == 0 {
     match c.r {
-      0 => Color::Black,
+      0 => Color::Reset,
       1 => Color::DarkRed,
       2 => Color::DarkGreen,
       3 => Color::DarkYellow,
@@ -33,7 +33,7 @@ fn syntect_to_crossterm_color(
       12 => Color::Blue,
       13 => Color::Magenta,
       14 => Color::Cyan,
-      15 => Color::White,
+      15 => Color::Reset,
 
       _ => panic!("Invalid theme. Alpha = 0 indicates 16 color in red."),
     }

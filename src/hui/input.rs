@@ -116,7 +116,7 @@ pub fn event_input(
       Event::FocusGained | Event::FocusLost => (),
   
       // If key event, match code and modifiers and handle thereafter
-      Event::Key(key) => {
+      Event::Key(key) if key.kind == crossterm::event::KeyEventKind::Press => {
         // Check if any of the state variables should be cleared
         // Done here instead of in all but 2 key-handlers
   
@@ -333,7 +333,10 @@ pub fn event_input(
   
           _ => (), // Ignore unknown codes
         } // End of matching key-codes and modifiers
-      } // End of Key input event matching
+      }, // End of Key input event matching
+
+      // Ignore key release events, if the terminal even provides them
+      Event::Key(_) => (),
     } // End of event match
   } // End of while
 
