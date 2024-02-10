@@ -286,7 +286,7 @@ fn join_joinable_lines(
       break 'chars;
     }
 
-    // For each line finally check if the preceeding line precludes joining
+    // For each line finally check if the preceding line precludes joining
     // If so we reset state and add the line without join
     // If so: no need to think, just reset state and add the line
     if !state.remove_newlines {
@@ -295,8 +295,8 @@ fn join_joinable_lines(
       continue;
     }
 
-    // If we get this far we can actually join the line with the preceeding.
-    // Handle trying to join the first line to non-existent preceeding line
+    // If we get this far we can actually join the line with the preceding.
+    // Handle trying to join the first line to non-existent preceding line
     if let Some(ch) = state.output.pop() {
       // Paranoid levels of insurance we don't delete any non-newline character
       // (shouldn't be reachable, as state.add_line ALWAYS adds '\n' after each line)
