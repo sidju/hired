@@ -219,7 +219,7 @@ pub fn internal_print(
           apply_style(style, &mut stdout)?;
         }
 
-        // After printing potential prefixes we check againts our given cursor, if given
+        // After printing potential prefixes we check against our given cursor, if given
         // We must check before printing ch, since printing newline resets i
         // Specifically we check if the cursor is before the current ch
         if let Some(cur) = conf.cursor {

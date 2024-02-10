@@ -11,7 +11,7 @@ use super::HUIError;
 type Result<T> = std::result::Result<T, HUIError>;
 
 // Since unicode is weird and this method is missing from str
-// Finds the nearest char boundary preceeding given index and returns its index
+// Finds the nearest char boundary preceding given index and returns its index
 fn rfind_boundary(s: &str, i: usize) -> usize {
   for b in (0 .. i).rev() {
     if s.is_char_boundary(b) { return b; }
@@ -163,7 +163,7 @@ pub fn event_input(
   
           (KeyCode::Backspace, KeyModifiers::NONE) | (KeyCode::Char('h'), KeyModifiers::CONTROL) => {
             if chindex == 0 {
-              // Join this and preceeding line
+              // Join this and preceding line
               if lindex != 0 {
                 // Go to end of previous line, remove its newline and append current line
                 let tmp = buffer.remove(lindex);
@@ -174,7 +174,7 @@ pub fn event_input(
               }
             }
             else {
-              // Just delete preceeding character
+              // Just delete preceding character
               chindex = rfind_boundary(&buffer[lindex], chindex);
               buffer[lindex].remove(chindex);
             }

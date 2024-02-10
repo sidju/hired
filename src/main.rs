@@ -8,7 +8,7 @@ mod config;
 use config::construct_config;
 mod macro_store;
 
-// All UI abtractions
+// All UI abstractions
 mod hui;
 use hui::error::HighlightingUIError as HUIError;
 
