@@ -19,8 +19,9 @@ for moving both within lines and between lines in input. Similar capabilities ex
 more are planned
 
 ## Commands:
-For details on commands instead look at the add-ed repository, which houses the library that parses and runs
-the commands.
+For details on commands instead look at the
+[add-ed repository](https://github.com/sidju/add-ed), which houses the library
+that parses and runs the commands.
 
 ## Attributions:
 This project has of course greatly benefited from all the crates it depends on. Especially I'd like to thank regex and syntect for helping me through my, to various degrees badly though out, issues.
@@ -38,3 +39,13 @@ cargo build
 Things to note:
 - run `gh repo clone sidju/hired -- --recurse-submodules` instead of `git clone` in case using [GitHub's CLI](https://github.com/cli/cli)
 - if `--recurse-submodules` was omitted, no highlights would be available
+
+## Backing library
+
+`hired` is built on the `ed` runtime of
+[add-ed](https://github.com/sidju/add-ed).
+
+If you wish to build your own editor using `ed` syntax you
+are advised to give it a look. It allows replacing the IO
+(file and shell interaction) as well as UI implementations
+to better suit your needs.
