@@ -17,8 +17,8 @@ impl std::fmt::Display for HighlightingUIError {
       HE::RawmodeSwitchFailed(e) => {
         write!(f,
           concat!(
-            "Failed to switch terminal to/from rawmode.\r\n\r\n",
-            "If your terminal is in rawmode when the editor quits, run 'reset'.\r\n\r\n",
+            "Failed to switch terminal to/from rawmode.\n\n",
+            "If your terminal is in rawmode when the editor quits, run 'reset'.\n\n",
             "Underlying error: {:?}"
           ),
           e
@@ -27,15 +27,14 @@ impl std::fmt::Display for HighlightingUIError {
       HE::TerminalIOFailed(e) => {
         write!(f,
           concat!(
-            "\r\n",
-            "Failed to interact with terminal.\r\n\r\n",
+            "Failed to interact with terminal.\n\n",
             "Underlying error: {:?}"
           ),
           e
         )
       },
       HE::Interrupted => {
-        write!(f, "\r\nInterrupted!")
+        write!(f, "Interrupted!")
       },
       HE::DocInsufficientWidth(e) => {
         write!(f,
