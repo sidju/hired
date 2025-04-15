@@ -55,6 +55,9 @@ impl UI for HighlightingUI {
     (|| -> std::io::Result<()> {
       use crossterm::style::Print;
       let mut stdout = stdout();
+      if crossterm::cursor::position()?.0 != 0 {
+        stdout.queue(Print("\n\r"))?;
+      }
       for line in text.lines() {
         stdout.queue(Print(line))?;
         stdout.queue(Print("\n\r"))?;

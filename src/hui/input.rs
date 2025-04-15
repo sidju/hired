@@ -197,7 +197,7 @@ pub fn event_input(
             }
           },
   
-          (KeyCode::Enter, KeyModifiers::NONE) => {
+          (KeyCode::Enter, KeyModifiers::NONE) | (KeyCode::Enter, KeyModifiers::CONTROL) => {
             // If only getting one line, return
             if terminator.is_none() {
               ret = true;
@@ -263,23 +263,22 @@ pub fn event_input(
           (KeyCode::Up, KeyModifiers::NONE) | (KeyCode::Down, KeyModifiers::NONE) => {
             // Go back/forth in history if in one-line mode
             if terminator.is_none() {
+              // If we are currently in the present, save state before moving
+              if hoffset == state.command_history.len() {
+                // Save current input line as semi history, unwrap or shouldn't ever be needed
+                semi_history = buffer.pop().unwrap_or("\n".to_string());
+              }
+              else {
+                buffer.pop();
+              }
               match key.code {
                 KeyCode::Up => {
-                  // If leaving present
-                  if hoffset == state.command_history.len() {
-                    // Save current input line as semi history, unwrap or shouldn't ever be needed
-                    semi_history = buffer.pop().unwrap_or("\n".to_string());
-                  }
-                  else {
-                    buffer.pop();
-                  }
                   // Then move into history
                   hoffset = hoffset.saturating_sub(1);
                 },
                 KeyCode::Down => {
                   // If not in the present, move forward in history
                   if hoffset < state.command_history.len() { hoffset += 1; }
-                  buffer.pop();
                 },
                 _ => (),
               }
