@@ -49,6 +49,11 @@ struct Args {
   #[arg(conflicts_with_all(["path","open_config"]))]
   #[serde(skip_serializing)]
   create_config: bool,
+  /// print attributions
+  #[clap(action, long)]
+  #[arg(conflicts_with_all(["path", "open_config", "create_config"]))]
+  #[serde(skip_serializing)]
+  attributions: bool,
 }
 
 // The configuration struct
@@ -80,6 +85,19 @@ pub fn construct_config() -> Config {
   };
   // Parse arguments first, so we can see if we should create a default config
   let args = Args::parse();
+  // If requested we print attributions and exit
+  if args.attributions {
+    println!();
+    println!("Written by sidju, inspired by ed (by Ken Thompson)");
+    println!("( See all contributors on github.com/sidju/hired and github.com/sidju/add-ed )\n");
+    println!("Special thanks to the crates regex and syntect, which made this project feasible.");
+    println!(
+      "Attributions for the theme and all syntax definitions can be found here:\n{}",
+      two_face::acknowledgement_url()
+    );
+    println!("Heartfelt thanks to the authors of those, and to the crates bat (and two-face) which gathered them.\n");
+    std::process::exit(0);
+  }
   if args.create_config {
     if config_path.exists() {
       println!(
