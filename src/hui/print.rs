@@ -12,11 +12,13 @@ use std::io::{Result, Write}; // Needs to be used in for queue and flush
 
 // Create some printing helpers
 fn syntect_to_crossterm_color(
-  c: syntect::highlighting::Color,
+  c: two_face::re_exports::syntect::highlighting::Color,
 ) -> Color {
   // If alpha value is zero the red value is which 16 color to use
   if c.a == 0 {
     match c.r {
+      // NOTE: this makes background colors present as expected,
+      // it is a workaround that you are free to replace with a proper fix
       0 => Color::Reset,
       1 => Color::DarkRed,
       2 => Color::DarkGreen,
@@ -33,6 +35,8 @@ fn syntect_to_crossterm_color(
       12 => Color::Blue,
       13 => Color::Magenta,
       14 => Color::Cyan,
+      // NOTE: this makes foreground colors present as expected,
+      // it is a workaround that you are free to replace with a proper fix
       15 => Color::Reset,
 
       _ => panic!("Invalid theme. Alpha = 0 indicates 16 color in red."),
@@ -43,10 +47,10 @@ fn syntect_to_crossterm_color(
   }
 }
 fn apply_style(
-  style: syntect::highlighting::Style,
+  style: two_face::re_exports::syntect::highlighting::Style,
   out: &mut impl Write,
 ) -> Result<()> {
-  use syntect::highlighting::FontStyle;
+  use two_face::re_exports::syntect::highlighting::FontStyle;
   use crossterm::style::{SetColors, SetAttribute, Colors, Attribute};
 
   // Prepare and apply colors
@@ -134,14 +138,14 @@ pub struct PrintConf {
 // Uses state to print the given iterator with given syntax highlighting
 pub fn internal_print(
   state: &HighlightingUI,
-  syntax: &syntect::parsing::SyntaxReference,
+  syntax: &two_face::re_exports::syntect::parsing::SyntaxReference,
   text: &mut dyn Iterator<Item = (char, &str)>,
   conf: PrintConf,
 ) -> Result<PrintData> {
   let mut stdout = std::io::stdout();
 
   let theme = &state.theme;
-  let mut highlighter = syntect::easy::HighlightLines::new(syntax, theme);
+  let mut highlighter = two_face::re_exports::syntect::easy::HighlightLines::new(syntax, theme);
 
   // Variables for tracking cursor positions
   // i is used for width to detect when we need to wrap lines over to next line

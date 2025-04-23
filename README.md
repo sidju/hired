@@ -24,9 +24,14 @@ For details on commands instead look at the
 that parses and runs the commands.
 
 ## Attributions:
-This project has of course greatly benefited from all the crates it depends on. Especially I'd like to thank regex and syntect for helping me through my, to various degrees badly though out, issues.
+This project has of course greatly benefited from all the crates it depends on.
+Especially I'd like to thank `regex` and `syntect` for helping me through my, to
+various degrees badly though out, issues.
 
-Then I have also gotten a hand up from 'bat', which I also consider an excellent companion to this application, from their handling of 16-color terminals. My theme is currently copied from their repo and will probably always be based on theirs.
+Then I have also gotten a hand up from [`bat`](https://github.com/sharkdp/bat),
+which I also consider an excellent companion app to this application, via
+[`two-face`](https://github.com/CosmicHorrorDev/two-face). I use their curated
+set of syntaxes and their 16-color terminal handling.
 
 ## Build:
 

@@ -1,9 +1,3 @@
-
-
-// Import the highlighting theme
-const THEME: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/compressed_theme"));
-const SYNTAXES: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/compressed_syntaxes"));
-
 mod config;
 use config::construct_config;
 mod macro_store;

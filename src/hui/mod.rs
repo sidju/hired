@@ -1,11 +1,7 @@
 use crossterm::QueueableCommand;
-use syntect::parsing::SyntaxSet;
-use syntect::highlighting::Theme;
+use two_face::re_exports::syntect::parsing::SyntaxSet;
+use two_face::re_exports::syntect::highlighting::Theme;
 use std::io::stdout;
-
-// Import the custom syntect theme for 16 color printing
-use super::THEME;
-use super::SYNTAXES;
 
 // use the UI trait, to implement it
 use add_ed::ui::{
@@ -34,8 +30,8 @@ pub struct HighlightingUI {
 }
 impl HighlightingUI {
   pub fn new() -> Self {
-    let theme: Theme = syntect::dumps::from_binary(THEME);
-    let syntax: SyntaxSet = syntect::dumps::from_binary(SYNTAXES);
+    let theme: Theme = two_face::theme::extra().get(two_face::theme::EmbeddedThemeName::Base16).clone();
+    let syntax: SyntaxSet = two_face::syntax::extra_newlines();
     Self{
       syntax_lib: syntax,
       theme: theme,
