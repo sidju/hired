@@ -4,9 +4,9 @@ version = 4
 
 [[package]]
 name = "add-ed"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb630aaf6968e5788dc37a158162b85800d2ba9c68e15be4dfd2cb0384edd383"
+checksum = "3b90f915feb4cfc309746f862911268cc1efdad37222efba460cc8d618032b72"
 dependencies = [
  "as-any",
  "regex",
@@ -143,9 +143,9 @@ checksum = "b6b1fc10dbac614ebc03540c9dbd60e83887fda27794998c6528f1782047d540"
 
 [[package]]
 name = "cc"
-version = "1.2.19"
+version = "1.2.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e3a13707ac958681c13b39b458c073d0d9bc8a22cb1b2f4c8e55eb72c13f362"
+checksum = "04da6a0d40b948dfc4fa8f5bbf402b0fc1a64a28dbf7d12ffd683550f2c1b63a"
 dependencies = [
  "shlex",
 ]
@@ -409,7 +409,7 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
 name = "hired"
-version = "0.13.1"
+version = "0.14.0"
 dependencies = [
  "add-ed",
  "clap",
