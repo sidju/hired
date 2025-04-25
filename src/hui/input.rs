@@ -109,6 +109,9 @@ pub fn event_input(
       // If resize event, just update usize
       Event::Resize(x, y) => { state.term_size = (x as usize, y as usize); },
   
+      // Ignore paste events
+      Event::Paste(_) => (),
+  
       // Ignore mouse events
       Event::Mouse(_) => (),
 
