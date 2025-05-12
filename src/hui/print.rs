@@ -61,6 +61,7 @@ fn apply_style(
   out.queue(SetColors(colors))?;
 
   // Interpret and apply styling
+  out.queue(SetAttribute(Attribute::Reset))?;
   if style.font_style.contains(FontStyle::BOLD) {
     out.queue(SetAttribute(Attribute::Bold))?;
   }

@@ -1,7 +1,7 @@
 [package]
 name = "hired"
 description = "Highlighting rust clone of ed"
-version = "0.14.1"
+version = "0.14.2"
 homepage = "https://github.com/sidju/hired"
 repository = "https://github.com/sidju/hired"
 readme = "README.md"
@@ -28,10 +28,10 @@ crossterm = "0.29"
 
 # Syntax highlighting
 # We import syntect via two-face, which also provides extra syntaxes for us
-two-face = { version = "0.4", features = [ "syntect-fancy" ] }
+two-face = { version = "0.4", default-features = false, features = [ "syntect-fancy" ] }
 
 # Documentation printing library
-termimad = "0.31"
+termimad = "0.32"
 
 # CLI and configuration parsing dependencies
 clap = { version = "4", features = ["derive", "env"] }
