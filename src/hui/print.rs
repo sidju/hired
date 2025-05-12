@@ -53,6 +53,9 @@ fn apply_style(
   use two_face::re_exports::syntect::highlighting::FontStyle;
   use crossterm::style::{SetColors, SetAttribute, Colors, Attribute};
 
+  // First reset fully
+  out.queue(SetAttribute(Attribute::Reset))?;
+
   // Prepare and apply colors
   let colors = Colors::new(
     syntect_to_crossterm_color(style.foreground),
@@ -61,7 +64,6 @@ fn apply_style(
   out.queue(SetColors(colors))?;
 
   // Interpret and apply styling
-  out.queue(SetAttribute(Attribute::Reset))?;
   if style.font_style.contains(FontStyle::BOLD) {
     out.queue(SetAttribute(Attribute::Bold))?;
   }
@@ -75,7 +77,7 @@ fn apply_style(
 }
 fn reset_style(out: &mut impl Write) -> Result<()> {
   use crossterm::style::{ResetColor, SetAttribute, Attribute};
-  out.queue(ResetColor)?;
+  out.queue(ResetColor)?; // Not needed for linux, but maybe on windows.
   out.queue(SetAttribute(Attribute::Reset))?;
   Ok(())
 }
